@@ -1,2 +1,535 @@
-import React,{useEffect,useState} from 'react';import{createRoot}from'react-dom/client';import{Globe2,Home,Compass,MessagesSquare,Users,Search,Bell,Plus,ArrowUpRight,Heart,MessageCircle,Send,MapPin,GraduationCap,Menu,X,ChevronRight,Hash,LogOut,Sparkles}from'lucide-react';import './style.css';
-const seed=[{id:1,name:'Maya Chen',initials:'MC',color:'#dcd7fb',country:'Singapore',time:'2h ago',room:'General',text:'Just moved to a new school abroad and honestly the hardest part is finding your people. Anyone else been through this? 🌍',likes:24,comments:8},{id:2,name:'Alex Rivera',initials:'AR',color:'#ffe2d2',country:'Spain',time:'5h ago',room:'University & Careers',text:'For everyone applying to universities this year: what’s one thing you wish you knew before starting your applications?',likes:17,comments:12},{id:3,name:'Sara Ahmed',initials:'SA',color:'#d4eee5',country:'UAE',time:'Yesterday',room:'Study Lounge',text:'IB students! What are your best tips for balancing coursework, extracurriculars, and having an actual life? 😅',likes:31,comments:15}];const rooms=[{name:'General',desc:'Everything and anything',emoji:'💬',count:'1.2k'},{name:'Study Lounge',desc:'Learn together, grow together',emoji:'📚',count:'856'},{name:'University & Careers',desc:'Your next chapter starts here',emoji:'🎓',count:'642'},{name:'Life Abroad',desc:'New places, shared experiences',emoji:'🌏',count:'503'},{name:'Culture Exchange',desc:'Celebrate where we come from',emoji:'🎨',count:'389'}];function stored(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}}function App(){const [tab,setTab]=useState('Home'),[room,setRoom]=useState('All'),[posts,setPosts]=useState(()=>stored('interoom-posts',seed)),[likes,setLikes]=useState(()=>stored('interoom-likes',[])),[user,setUser]=useState(()=>stored('interoom-user',null)),[draft,setDraft]=useState(''),[compose,setCompose]=useState(false),[auth,setAuth]=useState(false),[name,setName]=useState(''),[country,setCountry]=useState(''),[query,setQuery]=useState(''),[mobile,setMobile]=useState(false),[chat,setChat]=useState(()=>stored('interoom-chat',[])),[chatDraft,setChatDraft]=useState('');useEffect(()=>localStorage.setItem('interoom-posts',JSON.stringify(posts)),[posts]);useEffect(()=>localStorage.setItem('interoom-likes',JSON.stringify(likes)),[likes]);useEffect(()=>localStorage.setItem('interoom-user',JSON.stringify(user)),[user]);useEffect(()=>localStorage.setItem('interoom-chat',JSON.stringify(chat)),[chat]);const go=t=>{setTab(t);setMobile(false);if(t!=='Rooms')setRoom('All')};function submitPost(){if(!draft.trim())return;if(!user){setCompose(false);setAuth(true);return}setPosts([{id:Date.now(),name:user.name,initials:user.name.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase(),color:'#dceee9',country:user.country||'International',time:'Just now',room:room==='All'?'General':room,text:draft.trim(),likes:0,comments:0},...posts]);setDraft('');setCompose(false);setTab('Home')}function join(){if(!name.trim())return;setUser({name:name.trim(),country:country.trim()});setAuth(false)}const visible=posts.filter(p=>(room==='All'||p.room===room)&&[p.text,p.name,p.room].join(' ').toLowerCase().includes(query.toLowerCase()));return <div className="app"><aside className={'sidebar '+(mobile?'show':'')}><div className="brand" onClick={()=>go('Home')}><span className="brand-icon"><Globe2 size={24}/></span><span>interoom<span className="brand-dot">.</span></span></div><div className="side-label">YOUR SPACE</div><nav>{[[Home,'Home'],[Compass,'Explore'],[MessagesSquare,'Rooms'],[Users,'Community']].map(([Icon,label])=><button key={label} className={'nav-item '+(tab===label?'active':'')} onClick={()=>go(label)}><Icon size={19}/>{label}{tab===label&&<span className="active-pill"/>}</button>)}</nav><div className="side-label room-label">POPULAR ROOMS</div><div className="side-rooms">{rooms.slice(0,4).map(r=><button key={r.name} onClick={()=>{setRoom(r.name);setTab('Rooms');setMobile(false)}}><span>{r.emoji}</span>{r.name}</button>)}</div><div className="side-bottom"><div className="side-card"><span>✦</span><strong>Better together.</strong><p>Good conversations start with a hello.</p><button onClick={()=>setAuth(true)}>Join the community <ArrowUpRight size={14}/></button></div><div className="copyright">© 2026 Interoom · Made for everywhere</div></div></aside><main className="main"><header className="topbar"><button className="mobile-menu" onClick={()=>setMobile(!mobile)}><Menu size={23}/></button><div className="crumb">Community <ChevronRight size={15}/> <b>{tab}</b></div><div className="top-actions"><div className="search"><Search size={17}/><input placeholder="Search conversations..." value={query} onChange={e=>setQuery(e.target.value)}/></div><button className="icon-btn" aria-label="Notifications" onClick={()=>alert('You’re all caught up!')}><Bell size={20}/></button>{user?<button className="avatar small" onClick={()=>setAuth(true)} title={user.name}>{user.name[0].toUpperCase()}</button>:<button className="login" onClick={()=>setAuth(true)}>Join Interoom <ArrowUpRight size={15}/></button>}</div></header><div className="content"><section className="hero"><div className="hero-copy"><span className="eyebrow"><span className="online-dot"/> THE WORLD IS YOUR COMMUNITY</span><h1>Different places.<br/><em>Same wavelength.</em></h1><p>A home away from home for international students. Meet people who get it, share your story, and find your place anywhere.</p><button className="primary" onClick={()=>user?setCompose(true):setAuth(true)}>Start a conversation <ArrowUpRight size={18}/></button></div><div className="hero-art"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="planet">🌐</div><span className="floating f1">✦</span><span className="floating f2">✳</span><span className="floating f3">✦</span><div className="float-card fc1"><span>👋</span> Hey from Tokyo!</div><div className="float-card fc2"><span>🌍</span> Hello from everywhere</div></div></section><div className="below"><section className="feed"><div className="section-heading"><div><span className="overline">THE CONVERSATION</span><h2>{tab==='Rooms'&&room!=='All'?room:tab==='Explore'?'Explore conversations':tab==='Community'?'Our community':'Around the room'}</h2><p>{tab==='Rooms'&&room!=='All'?'A space for conversations that matter.':'Real stories, fresh perspectives, and people like you.'}</p></div><button className="new-post" onClick={()=>user?setCompose(true):setAuth(true)}><Plus size={17}/> New post</button></div><div className="filters">{['All','General','Study Lounge','University & Careers','Life Abroad'].map(r=><button key={r} className={room===r?'selected':''} onClick={()=>setRoom(r)}>{r==='All'?'For you':r}</button>)}</div><div className="posts">{visible.length?visible.map(p=><article className="post" key={p.id}><div className="post-head"><div className="avatar" style={{background:p.color}}>{p.initials}</div><div className="author"><strong>{p.name}</strong><span><MapPin size={12}/>{p.country} <span className="dot-sep">·</span> {p.time}</span></div><span className="tag">{p.room}</span></div><p className="post-text">{p.text}</p><div className="post-actions"><button className={likes.includes(p.id)?'liked':''} onClick={()=>setLikes(likes.includes(p.id)?likes.filter(x=>x!==p.id):[...likes,p.id])}><Heart size={17} fill={likes.includes(p.id)?'currentColor':'none'}/>{p.likes+(likes.includes(p.id)?1:0)}</button><button onClick={()=>alert('Full replies will be available when Interoom’s backend is connected.')}><MessageCircle size={17}/>{p.comments} replies</button><span className="post-more">↗</span></div></article>):<div className="empty">No conversations found. Try another search or room.</div>}</div></section><aside className="right"><div className="right-card"><div className="card-top"><h3>Find your corner <span>✳</span></h3><p>Every interest has a place here.</p></div><div className="room-list">{rooms.map(r=><button key={r.name} onClick={()=>{setRoom(r.name);setTab('Rooms')}}><span className="room-emoji">{r.emoji}</span><span className="room-info"><strong>{r.name}</strong><small>{r.desc}</small></span><ChevronRight size={16}/></button>)}</div></div><div className="right-card note"><div className="note-icon"><GraduationCap size={21}/></div><h3>Your people are out there.</h3><p>Whether you just moved schools or you've lived in five countries, you belong here.</p><button onClick={()=>setAuth(true)}>Be part of it <ArrowUpRight size={15}/></button></div><div className="footnote">Built to bring students together, wherever life takes them. ♡</div></aside></div><section className="chat-panel"><div><span className="overline">THE COMMON SPACE</span><h2>Say hello to the world.</h2><p>A preview chat on this device. Live chat for everyone requires a backend.</p></div><div className="chat-box"><div className="chat-history">{chat.length?chat.map((m,i)=><p key={i}><strong>{m.name}: </strong>{m.text}</p>):<p className="muted">No messages yet. Start the conversation!</p>}</div><div className="chat-input"><input value={chatDraft} placeholder="Write a message..." onChange={e=>setChatDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&chatDraft.trim()){if(!user){setAuth(true);return}setChat([...chat,{name:user.name,text:chatDraft.trim()}]);setChatDraft('')}}}/><button onClick={()=>{if(!chatDraft.trim())return;if(!user){setAuth(true);return}setChat([...chat,{name:user.name,text:chatDraft.trim()}]);setChatDraft('')}}><Send size={17}/></button></div></div></section></div></main>{(compose||auth)&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget){setCompose(false);setAuth(false)}}}><div className="modal"><button className="close" onClick={()=>{setCompose(false);setAuth(false)}}><X size={20}/></button>{compose?<><span className="overline">SHARE YOUR STORY</span><h2>Start a conversation</h2><p>What's on your mind? Your perspective matters.</p><textarea autoFocus rows="6" placeholder="Hey Interoom! I've been thinking about..." value={draft} onChange={e=>setDraft(e.target.value)}/><button className="primary modal-submit" onClick={submitPost}>Publish post <ArrowUpRight size={17}/></button></>:<><span className="overline">WELCOME TO INTEROOM</span><h2>{user?'Your profile':'Find your people.'}</h2><p>{user?'You are using a local demo profile.':'Create a demo profile to try posting and chatting on this device.'}</p>{user?<><div className="profile-preview"><div className="avatar">{user.name[0].toUpperCase()}</div><div><strong>{user.name}</strong><p>{user.country||'International student'}</p></div></div><button className="outline" onClick={()=>{setUser(null);setAuth(false)}}><LogOut size={16}/> Sign out</button></>:<><input placeholder="Your name" value={name} onChange={e=>setName(e.target.value)}/><input placeholder="Country (optional)" value={country} onChange={e=>setCountry(e.target.value)}/><button className="primary modal-submit" onClick={join}>Join the conversation <ArrowUpRight size={17}/></button><small className="disclaimer">Demo only: this does not create a secure online account. Do not enter sensitive information.</small></>}</>}</div></div>}</div>};createRoot(document.getElementById('root')).render(<App/>);
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import {
+  ArrowLeft, ArrowRight, ArrowUpRight, Compass, Flag, Hash, Heart, LogOut,
+  Menu, MessageCircle, Plus, Search, Send, Trash2, X,
+} from 'lucide-react';
+import {
+  addEntry, deleteEntry, getMessages, getPosts, getProfile, getReplies,
+  reportEntry, saveProfile, setReaction, supabase,
+} from './community';
+import { roomById, rooms } from './rooms';
+import { currentRoute, roomUrl } from './routing';
+import './style.css';
+
+const timestamp = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const kinds = { posts: 'post', replies: 'reply', messages: 'message' };
+
+function useResource(load) {
+  const [result, setResult] = useState({ load: null });
+  const request = useRef(0);
+  const refresh = useCallback(async () => {
+    const id = ++request.current;
+    try {
+      const items = await load();
+      if (id === request.current) setResult({ load, items });
+    } catch {
+      if (id === request.current) setResult(previous => ({ ...(previous.load === load ? previous : {}), load, error: true }));
+    }
+  }, [load]);
+
+  useEffect(() => {
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => {
+      request.current++;
+      window.removeEventListener('focus', refresh);
+    };
+  }, [refresh]);
+
+  return { ...(result.load === load ? result : {}), refresh };
+}
+
+function useAction() {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  const busy = useRef(false);
+
+  async function run(action, message = 'Something went wrong. Please try again.') {
+    if (busy.current) return;
+    busy.current = true;
+    setPending(true);
+    setError('');
+    try {
+      await action();
+    } catch {
+      setError(message);
+    } finally {
+      busy.current = false;
+      setPending(false);
+    }
+  }
+
+  return { pending, error, run };
+}
+
+function Avatar({ name }) {
+  const letters = (name || 'Member').split(/\s+/).slice(0, 2).map(word => word[0]).join('');
+  return <span className="avatar" aria-hidden="true">{letters}</span>;
+}
+
+function Status({ resource }) {
+  if (resource.error) {
+    return <p className="state" role="status">Couldn’t load this. <button className="text-button" onClick={resource.refresh}>Try again</button></p>;
+  }
+  return resource.items ? null : <p className="state" role="status">Loading…</p>;
+}
+
+function Modal({ title, close, children }) {
+  const dialog = useRef(null);
+  useEffect(() => {
+    const element = dialog.current;
+    element.showModal();
+    return () => element.close();
+  }, []);
+
+  return (
+    <dialog ref={dialog} aria-labelledby="dialog-title" onCancel={event => { event.preventDefault(); close(); }}>
+      <div className="dialog-title">
+        <h2 id="dialog-title">{title}</h2>
+        <button className="icon-button" aria-label="Close" onClick={close}><X size={20} /></button>
+      </div>
+      {children}
+    </dialog>
+  );
+}
+
+function AuthForm({ userId, profile, metadata, recovery, onSaved, onSignOut }) {
+  const [mode, setMode] = useState('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState(profile?.name ?? metadata?.name ?? '');
+  const [country, setCountry] = useState(profile?.country ?? metadata?.country ?? '');
+  const [sent, setSent] = useState('');
+  const { run, pending, error } = useAction();
+  if (!supabase) return <p>Account setup is temporarily unavailable.</p>;
+  function submit(event) {
+    event.preventDefault();
+    run(async () => {
+      if (recovery) {
+        const result = await supabase.auth.updateUser({ password });
+        if (result.error) throw result.error;
+        onSaved(profile);
+      } else if (userId) {
+        const next = { name: name.trim(), country: country.trim() };
+        await saveProfile(userId, next, Boolean(profile));
+        onSaved(next);
+      } else if (mode === 'reset') {
+        const result = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: window.location.origin + '/?reset=1',
+        });
+        if (result.error) throw result.error;
+        setSent('If an account exists for that email, you’ll receive a password reset link.');
+      } else if (mode === 'signup') {
+        const result = await supabase.auth.signUp({ email: email.trim(), password,
+          options: { emailRedirectTo: window.location.origin + '/', data: { name: name.trim(), country: country.trim() } },
+        });
+        if (result.error) throw result.error;
+        setSent(result.data.session ? 'Account created. Finish setting up your profile.' : 'Check your inbox to confirm your email. Then sign in here.');
+      } else {
+        const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (result.error) throw result.error;
+      }
+    }, mode === 'login' && !userId ? 'Couldn’t sign in. Check your email and password and confirm your email first.' : 'Couldn’t complete that request. Please try again shortly.');
+  }
+  return <form className="dialog-form" onSubmit={submit}>
+    {!userId && <div className="view-switch">{[['login', 'Sign in'], ['signup', 'Create account']].map(([value, label]) =>
+      <button key={value} type="button" aria-pressed={mode === value} onClick={() => { setMode(value); setSent(''); }}>{label}</button>)}</div>}
+    {sent && <p role="status">{sent}</p>}
+    {!userId && <label>Email<input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} /></label>}
+    {(recovery || (!userId && mode !== 'reset')) && <label>{recovery ? 'New password' : 'Password'}<input type="password" required minLength={mode === 'login' && !recovery ? 1 : 8} autoComplete={mode === 'login' && !recovery ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} /></label>}
+    {!recovery && (userId || mode === 'signup') && <>
+      <label>Display name<input required minLength={2} maxLength={40} autoComplete="nickname" value={name} onChange={e => setName(e.target.value)} /></label>
+      <label>Country (optional)<input maxLength={60} value={country} onChange={e => setCountry(e.target.value)} /></label>
+    </>}
+    {error && <p className="error" role="alert">{error}</p>}
+    <div className="dialog-actions"><button className="primary" disabled={pending}>{pending ? 'Please wait…' : recovery ? 'Save new password' : userId ? 'Save profile' : mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Sign in'}</button>
+    {userId ? <button type="button" className="text-button" disabled={pending} onClick={() => run(onSignOut)}>Sign out</button> :
+      <button type="button" className="text-button" onClick={() => { setMode('reset'); setSent(''); }}>Forgot password?</button>}
+    </div>
+  </form>;
+}
+
+function Compose({ selectedRoom, profile, close, onPosted }) {
+  const [roomId, setRoomId] = useState(selectedRoom || 'general');
+  const [body, setBody] = useState('');
+  const { run, pending, error } = useAction();
+
+  return (
+    <form className="dialog-form" onSubmit={event => {
+      event.preventDefault();
+      if (body.trim()) run(async () => {
+        await addEntry('posts', { room_id: roomId, body: body.trim() }, profile);
+        close();
+        onPosted(roomId);
+      });
+    }}>
+      <label>Room<select value={roomId} onChange={event => setRoomId(event.target.value)}>
+        {rooms.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
+      </select></label>
+      <label>Post<textarea required rows={6} maxLength={2000} value={body} onChange={event => setBody(event.target.value)} /></label>
+      {error && <p className="error" role="alert">{error}</p>}
+      <button className="primary" disabled={pending || !body.trim()}>Publish post</button>
+    </form>
+  );
+}
+
+function EntryControls({ entry, table, userId, profile, onDelete, onReport }) {
+  const [confirming, setConfirming] = useState(false);
+  const { run, pending, error } = useAction();
+  const own = profile && entry.author_id === userId;
+  if (!own && (!supabase || !profile)) return null;
+  const kind = kinds[table];
+
+  return (
+    <div className="entry-controls">
+      {own ? (
+        confirming ? (
+          <>
+            <button type="button" className="text-button danger" disabled={pending} onClick={() => run(async () => {
+              await deleteEntry(table, entry.id);
+              await onDelete();
+              setConfirming(false);
+            })}>Delete {kind}</button>
+            <button type="button" className="text-button" disabled={pending} onClick={() => setConfirming(false)}>Cancel</button>
+          </>
+        ) : (
+          <button type="button" className="icon-button" aria-label={`Delete ${kind}`} onClick={() => setConfirming(true)}><Trash2 size={15} /></button>
+        )
+      ) : (
+        <button type="button" className="icon-button" aria-label={`Report ${kind}`} onClick={() => onReport({ kind, id: entry.id })}><Flag size={15} /></button>
+      )}
+      {error && <span className="error" role="alert">{error}</span>}
+    </div>
+  );
+}
+
+function Author({ entry }) {
+  return (
+    <div className="author">
+      <Avatar name={entry.profile?.name} />
+      <div>
+        <strong>{entry.profile?.name || 'Member'}</strong>
+        <small>
+          {[entry.profile?.country, entry.created_at && timestamp.format(new Date(entry.created_at))].filter(Boolean).join(' · ')}
+        </small>
+      </div>
+    </div>
+  );
+}
+
+function EntryForm({ table, fields, profile, requireProfile, onSent, label }) {
+  const [body, setBody] = useState('');
+  const { run, pending, error } = useAction();
+
+  return (
+    <form className="entry-form" onSubmit={event => {
+      event.preventDefault();
+      if (!body.trim()) return;
+      if (!profile) return requireProfile();
+      run(async () => {
+        await addEntry(table, { ...fields, body: body.trim() }, profile);
+        setBody('');
+        await onSent();
+      });
+    }}>
+      <div className="entry-input">
+        <textarea aria-label={label} placeholder={label} rows={2} maxLength={1000} value={body} onChange={event => setBody(event.target.value)} />
+        <button className="primary" aria-label="Send" disabled={pending || !body.trim()}><Send size={17} /></button>
+      </div>
+      {error && <p className="error" role="alert">{error}</p>}
+    </form>
+  );
+}
+
+function Replies({ post, refreshPosts, ...actions }) {
+  const load = useCallback(() => getReplies(post.id), [post.id]);
+  const resource = useResource(load);
+  async function refresh() {
+    await Promise.all([resource.refresh(), refreshPosts()]);
+  }
+
+  return (
+    <section className="replies" aria-label="Replies">
+      <Status resource={resource} />
+      {resource.items?.map(entry => (
+        <article className="short-entry" key={entry.id}>
+          <div className="entry-head"><Author entry={entry} /><EntryControls entry={entry} table="replies" onDelete={refresh} {...actions} /></div>
+          <p>{entry.body}</p>
+        </article>
+      ))}
+      <EntryForm table="replies" fields={{ post_id: post.id }} label="Write a reply" onSent={refresh} {...actions} />
+    </section>
+  );
+}
+
+function Post({ post, refresh, onRoom, ...actions }) {
+  const [expanded, setExpanded] = useState(false);
+  const { run, pending, error } = useAction();
+
+  return (
+    <article className="post">
+      <div className="entry-head">
+        <Author entry={post} />
+        <button className="room-tag" onClick={() => onRoom(post.room_id)}><Hash size={14} />{roomById[post.room_id]?.name}</button>
+      </div>
+      <p className="post-body">{post.body}</p>
+      <div className="post-actions">
+        <button className={post.liked ? 'liked' : ''} aria-pressed={post.liked} aria-label={post.liked ? 'Remove like' : 'Like post'} disabled={pending} onClick={() => {
+          if (!actions.profile) return actions.requireProfile();
+          run(async () => { await setReaction(post, actions.userId); await refresh(); });
+        }}><Heart size={17} fill={post.liked ? 'currentColor' : 'none'} />{post.reactionCount || 'Like'}</button>
+        <button aria-expanded={expanded} onClick={() => setExpanded(!expanded)}><MessageCircle size={17} />{post.replyCount ? `${post.replyCount} ${post.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</button>
+        <EntryControls entry={post} table="posts" onDelete={refresh} {...actions} />
+      </div>
+      {error && <p className="error" role="alert">{error}</p>}
+      {expanded && <Replies post={post} refreshPosts={refresh} {...actions} />}
+    </article>
+  );
+}
+
+function Feed({ roomId, query, member, onRoom, ...actions }) {
+  const load = useCallback(() => member ? getPosts(roomId, actions.userId) : Promise.resolve([]), [member, roomId, actions.userId]);
+  const resource = useResource(load);
+  const term = query.trim().toLowerCase();
+  const posts = resource.items?.filter(post => [post.body, post.profile?.name, roomById[post.room_id]?.name]
+    .some(value => value?.toLowerCase().includes(term)));
+
+  if (!member) return <p className="state">Sign in to read and join the conversations. <button className="text-button" onClick={actions.requireProfile}>Sign in</button></p>;
+
+  return (
+    <div className="feed">
+      <Status resource={resource} />
+      {posts?.length === 0 && <p className="state">{term ? 'No matching posts.' : 'No posts in this room yet.'}</p>}
+      {posts?.map(post => <Post key={post.id} post={post} refresh={resource.refresh} onRoom={onRoom} {...actions} />)}
+    </div>
+  );
+}
+
+function Chat({ roomId, member, ...actions }) {
+  const load = useCallback(() => member ? getMessages(roomId) : Promise.resolve([]), [member, roomId]);
+  const resource = useResource(load);
+  const { refresh } = resource;
+  const log = useRef(null);
+
+  useEffect(() => {
+    if (!supabase || !member) return;
+    const channel = supabase.channel(`room:${roomId}:${crypto.randomUUID()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, refresh)
+      .subscribe(status => { if (status === 'SUBSCRIBED') refresh(); });
+    const timer = window.setInterval(refresh, 20_000);
+    return () => {
+      window.clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [member, roomId, refresh]);
+
+  const latestId = resource.items?.at(-1)?.id;
+  useEffect(() => {
+    if (log.current) log.current.scrollTop = log.current.scrollHeight;
+  }, [latestId]);
+
+  if (!member) return <p className="state">Sign in to read and send messages. <button className="text-button" onClick={actions.requireProfile}>Sign in</button></p>;
+
+  return (
+    <div className="chat">
+      <div className="chat-log" ref={log} role="log" aria-label="Room messages" tabIndex={0}>
+        <Status resource={resource} />
+        {resource.items?.length === 0 && <p className="state">No messages yet. Say hello.</p>}
+        {resource.items?.map(entry => (
+          <article className="short-entry" key={entry.id}>
+            <div className="entry-head"><Author entry={entry} /><EntryControls entry={entry} table="messages" onDelete={refresh} {...actions} /></div>
+            <p>{entry.body}</p>
+          </article>
+        ))}
+      </div>
+      <EntryForm table="messages" fields={{ room_id: roomId }} label="Write a message" onSent={refresh} {...actions} />
+    </div>
+  );
+}
+
+function ReportForm({ report, onSent }) {
+  const [reason, setReason] = useState('');
+  const { run, pending, error } = useAction();
+
+  return (
+    <form className="dialog-form" onSubmit={event => {
+      event.preventDefault();
+      if (reason.trim()) run(async () => {
+        await reportEntry(report.kind, report.id, reason.trim());
+        onSent();
+      });
+    }}>
+      <label>What happened?<textarea required maxLength={500} rows={4} value={reason} onChange={event => setReason(event.target.value)} /></label>
+      {error && <p className="error" role="alert">{error}</p>}
+      <button className="primary" disabled={pending || !reason.trim()}>Send report</button>
+    </form>
+  );
+}
+
+function App() {
+  const [sessionUser, setSessionUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [profileError, setProfileError] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileRetry, setProfileRetry] = useState(0);
+  const [roomId, setRoomId] = useState(() => currentRoute(window.location).roomId);
+  const [view, setView] = useState(() => currentRoute(window.location).view);
+  const [recovery, setRecovery] = useState(false);
+  const [query, setQuery] = useState('');
+  const [mobile, setMobile] = useState(false);
+  const [modal, setModal] = useState(null);
+  const [notice, setNotice] = useState('');
+  const [revision, setRevision] = useState(0);
+  const userId = sessionUser?.id;
+  const member = Boolean(userId);
+  const room = roomById[roomId];
+
+  useEffect(() => {
+    if (!supabase) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSessionUser(session?.user ?? null);
+      if (event === 'PASSWORD_RECOVERY' || (session && new URLSearchParams(location.search).get('reset') === '1')) { setRecovery(true); setModal('auth'); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setProfile(null);
+    setProfileError(false);
+    setProfileLoading(Boolean(userId));
+    if (userId) {
+      getProfile(userId).then(next => { if (active) { setProfile(next); if (!next) setModal('auth'); } })
+        .catch(() => { if (active) setProfileError(true); })
+        .finally(() => { if (active) setProfileLoading(false); });
+    }
+    return () => { active = false; };
+  }, [userId, profileRetry]);
+
+  function navigate(nextRoom, nextView = 'posts') {
+    const destination = new URL(roomUrl(nextRoom, nextView, window.location, import.meta.env.VITE_ROOM_SUBDOMAINS === 'true'));
+    if (destination.origin !== window.location.origin) { window.location.assign(destination.href); return; }
+    window.history.pushState(null, '', destination.href);
+    setRoomId(nextRoom);
+    setView(nextView);
+    setQuery('');
+    setMobile(false);
+  }
+
+  useEffect(() => {
+    const update = () => { const route = currentRoute(window.location); setRoomId(route.roomId); setView(route.view); };
+    window.addEventListener('popstate', update);
+    return () => window.removeEventListener('popstate', update);
+  }, []);
+
+  function requireProfile() {
+    if (profileError) {
+      setProfileRetry(value => value + 1);
+      return;
+    }
+    if (!profileLoading) setModal('auth');
+  }
+
+  async function signOut() {
+    if (supabase) {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    }
+    setModal(null);
+    setNotice('');
+  }
+
+  const actions = { profile, userId, requireProfile, onReport: setModal };
+
+  return (
+    <div className="app">
+      {mobile && <button className="mobile-backdrop" aria-label="Close navigation" onClick={() => setMobile(false)} />}
+      <aside className={`sidebar ${mobile ? 'sidebar-open' : ''}`} aria-label="Community navigation">
+        <button className="brand" onClick={() => navigate(null)}><span className="brand-icon"><MessageCircle size={21} /></span>interoom</button>
+        <nav>
+          <button className={!room ? 'current' : ''} aria-current={!room ? 'page' : undefined} onClick={() => navigate(null)}><Compass size={18} /> All conversations</button>
+          <p className="nav-label">Rooms</p>
+          {rooms.map(item => (
+            <button key={item.id} className={roomId === item.id ? 'current' : ''} aria-current={roomId === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
+              <Hash size={17} />{item.name}
+            </button>
+          ))}
+        </nav>
+        <button className="sidebar-chat" onClick={() => navigate('general', 'chat')}><MessageCircle size={18} /> General chat <ArrowUpRight size={15} /></button>
+      </aside>
+
+      <div className="main">
+        <header className="topbar">
+          <button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={mobile} onClick={() => setMobile(!mobile)}><Menu size={23} /></button>
+          <label className="search">
+            <Search size={17} />
+            <input type="search" aria-label="Search recent posts" placeholder="Search recent posts" value={query} onChange={event => {
+              setQuery(event.target.value);
+              if (view === 'chat') { const url = roomUrl(roomId, 'posts', window.location, false); history.replaceState(null, '', url); setView('posts'); }
+            }} />
+          </label>
+          <button className="account" onClick={requireProfile}>{profile && <Avatar name={profile.name} />}{profile?.name || (userId ? 'Set up profile' : 'Sign in')}</button>
+        </header>
+
+        <main className="content">
+          {!room && <section className="hero"><div className="hero-copy"><span className="eyebrow">INTEROOM</span><h1>Different places.<br /><em>Same wavelength.</em></h1><p>Meet other international students, share your experience, and talk about school and life abroad.</p><button className="primary" onClick={() => profile ? setModal('compose') : requireProfile()}>Start a conversation <ArrowUpRight size={18} /></button></div></section>}
+          <div className="page-intro">
+            {room && <button className="text-button back" onClick={() => navigate(null)}><ArrowLeft size={15} /> All conversations</button>}
+            <h1>{room ? room.name : 'Around the room'}</h1>
+            <p>{room?.description ?? 'A forum for international students to talk about school, moving countries, and what comes next.'}</p>
+          </div>
+
+          {!supabase && <p className="demo-note">Interoom is being connected. Accounts and conversations will be available shortly.</p>}
+          {profileError && <p className="state" role="alert">Couldn’t load your profile. <button className="text-button" onClick={requireProfile}>Try again</button></p>}
+          {notice && <p className="demo-note" role="status">{notice}</p>}
+
+          <div className="below">
+            <section className="main-column" aria-label={view === 'chat' ? 'Room chat' : 'Discussion feed'}>
+              <div className="feed-toolbar">
+                {room ? (
+                  <div className="view-switch">
+                    <button aria-pressed={view === 'posts'} onClick={() => navigate(roomId, 'posts')}>Posts</button>
+                    <button aria-pressed={view === 'chat'} onClick={() => navigate(roomId, 'chat')}>Room chat</button>
+                  </div>
+                ) : <h2>Latest posts</h2>}
+                {view === 'posts' && <button className="primary" onClick={() => profile ? setModal('compose') : requireProfile()}><Plus size={17} /> New post</button>}
+              </div>
+              {view === 'chat' ? (
+                <Chat key={roomId} roomId={roomId} member={member} {...actions} />
+              ) : (
+                <Feed key={`${userId}:${roomId}:${revision}`} roomId={roomId} query={query} member={member} onRoom={navigate} {...actions} />
+              )}
+            </section>
+
+            <aside className="room-guide right-card" aria-label="Room directory">
+              <h2>Pick a room</h2>
+              {rooms.map(item => (
+                <button key={item.id} onClick={() => navigate(item.id)}>
+                  <span className="room-symbol"><Hash size={17} /></span>
+                  <span><strong>{item.name}</strong><small>{item.description}</small></span>
+                  <ArrowRight size={16} className="room-arrow" />
+                </button>
+              ))}
+            </aside>
+          </div>
+        </main>
+      </div>
+
+      {modal === 'auth' && <Modal title={recovery ? 'Reset password' : profile ? 'Your profile' : supabase && !userId ? 'Sign in to Interoom' : 'Choose a display name'} close={() => setModal(null)}>
+        <AuthForm key={`${userId}:${Boolean(profile)}:${recovery}`} recovery={recovery} metadata={sessionUser?.user_metadata} userId={userId} profile={profile} onSaved={next => { setProfile(next); setRecovery(false); const url = new URL(location.href); url.searchParams.delete('reset'); url.searchParams.delete('code'); history.replaceState(null, '', url.pathname + url.search); setModal(null); }} onSignOut={signOut} />
+      </Modal>}
+      {modal === 'compose' && <Modal title="New post" close={() => setModal(null)}>
+        <Compose selectedRoom={roomId} profile={profile} close={() => setModal(null)} onPosted={nextRoom => {
+          navigate(roomId ? nextRoom : null);
+          setRevision(value => value + 1);
+        }} />
+      </Modal>}
+      {modal?.kind && <Modal title={`Report ${modal.kind}`} close={() => setModal(null)}>
+        <ReportForm report={modal} onSent={() => { setModal(null); setNotice('Report sent.'); }} />
+      </Modal>}
+    </div>
+  );
+}
+
+createRoot(document.getElementById('root')).render(<App />);
