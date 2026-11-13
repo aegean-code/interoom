@@ -1,22 +1,31 @@
 # Interoom
 
-A responsive React/Vite prototype for an international student community, branded **Interoom**.
+International student discussions and room chat. React + Vite, Supabase Auth/Postgres/Realtime. Existing Interoom branding and purple styling are preserved. There are no seeded users, conversations, reactions, or invented activity counts.
 
-## Run locally
+## Development
 
-```bash
-npm install
-npm run dev
-```
+Use Node 22 or newer. Run `npm ci`, copy `.env.example` to `.env.local`, set the Supabase URL and publishable key, then `npm run dev`. Never put a service-role or secret key in a VITE variable. `npm test` covers URL routing; `npm run build` creates the production bundle.
 
-## Deploy on Vercel
+## Database
 
-1. Upload this project to a new GitHub repository (all files, including `src`).
-2. In Vercel, select **Add New → Project → Import Git Repository**.
-3. Vercel detects Vite. Build command: `npm run build`; output directory: `dist`.
-4. Deploy. Under **Project → Settings → Domains**, add `interoom.org` and `www.interoom.org`.
-5. At GoDaddy → Domain Portfolio → interoom.org → DNS, add/change only the records Vercel tells you to use. Avoid changing mail-related records.
+`supabase/migrations/20261113000000_create_community.sql` creates profiles, rooms, posts, replies, reactions, messages and reports. Only the five room definitions are seeded. The migration was applied to the connected Interoom Supabase project. RLS restricts content to signed-in members, profile edits and content deletion to their owners, and reports to admin review through the dashboard. Chat uses Realtime with a periodic refresh fallback.
 
-## Important: prototype limitations
+`tests/database.sql` validates ownership, anonymous denial, report privacy and cascade deletion inside a rolled-back transaction. Run only on a dedicated test database or an empty project before launch.
 
-The demo uses browser `localStorage` for profiles, posts, likes and chat. These are **not shared between visitors** and are not secure accounts. Sample community posts are fictional. Before opening to real students, add secure authentication, a hosted database, server-side authorization, abuse reporting, moderation, privacy policy and appropriate safeguards for minors. Do not collect personal or sensitive information through the prototype.
+## Release checklist
+
+- [x] Shared database, ownership rules, realtime publication.
+- [x] Signup, confirmation-aware login, profile editing, password recovery UI.
+- [x] Shared posts, replies, reactions, room messages and reports.
+- [x] Remove demonstration people and content.
+- [x] URL routing and browser back/reload behavior.
+- [ ] Verify email delivery with a real test inbox; configure Supabase SMTP if necessary.
+- [ ] In Supabase Auth URL configuration, add the exact protected preview origin and `/?reset=1` callback. Production Site URL should be `https://www.interoom.org`; allow callbacks on www and each approved room host.
+- [ ] Complete signup, email confirmation, login, recovery and two-browser chat checks with real test accounts.
+- [ ] Obtain owner approval before production release or DNS/domain changes.
+- [ ] Configure production VITE variables, attach the five hosts to the existing Vercel project and verify DNS/TLS.
+- [ ] Set VITE_ROOM_SUBDOMAINS=true only when the hosts resolve and callback URLs are allowed; rebuild.
+
+Room hosts: general.interoom.org, study.interoom.org, careers.interoom.org, abroad.interoom.org, culture.interoom.org. Until enabled, previews use `?room=...&view=chat` on the same origin. Production sessions share cookies only across the known Interoom domain; preview sessions stay on their own host.
+
+The initial feed loads 60 posts, a reply thread loads 100 replies and chat loads the latest 100 messages. Search filters loaded posts. Reporting records a private report for owner review; there is no staffed moderation service or automatic removal.
