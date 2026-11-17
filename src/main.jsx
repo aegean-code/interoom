@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, Compass, Flag, Hash, Heart, LogOut,
+  ArrowLeft, ArrowRight, ArrowUpRight, Compass, Flag, Hash, Heart,
   Menu, MessageCircle, Plus, Search, Send, Trash2, X,
 } from 'lucide-react';
 import {
@@ -94,10 +94,11 @@ function Modal({ title, close, children }) {
   );
 }
 
-function AuthForm({ userId, profile, metadata, recovery, onSaved, onSignOut }) {
-  const [mode, setMode] = useState('login');
+function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', onSaved, onSignOut }) {
+  const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordAgain, setPasswordAgain] = useState('');
   const [name, setName] = useState(profile?.name ?? metadata?.name ?? '');
   const [country, setCountry] = useState(profile?.country ?? metadata?.country ?? '');
   const [sent, setSent] = useState('');
@@ -107,6 +108,7 @@ function AuthForm({ userId, profile, metadata, recovery, onSaved, onSignOut }) {
     event.preventDefault();
     run(async () => {
       if (recovery) {
+        if (password !== passwordAgain) throw new Error('Passwords do not match');
         const result = await supabase.auth.updateUser({ password });
         if (result.error) throw result.error;
         onSaved(profile);
@@ -119,7 +121,7 @@ function AuthForm({ userId, profile, metadata, recovery, onSaved, onSignOut }) {
           redirectTo: window.location.origin + '/?reset=1',
         });
         if (result.error) throw result.error;
-        setSent('If an account exists for that email, you’ll receive a password reset link.');
+        setSent('If an account exists for that email, you’ll receive a reset link. Open the newest email in this same browser.');
       } else if (mode === 'signup') {
         const result = await supabase.auth.signUp({ email: email.trim(), password,
           options: { emailRedirectTo: window.location.origin + '/', data: { name: name.trim(), country: country.trim() } },
@@ -130,14 +132,16 @@ function AuthForm({ userId, profile, metadata, recovery, onSaved, onSignOut }) {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (result.error) throw result.error;
       }
-    }, mode === 'login' && !userId ? 'Couldn’t sign in. Check your email and password and confirm your email first.' : 'Couldn’t complete that request. Please try again shortly.');
+    }, recovery && password !== passwordAgain ? 'The passwords don’t match.' : mode === 'login' && !userId ? 'Couldn’t sign in. Check your email and password and confirm your email first.' : 'Couldn’t complete that request. Please try again shortly.');
   }
   return <form className="dialog-form" onSubmit={submit}>
     {!userId && <div className="view-switch">{[['login', 'Sign in'], ['signup', 'Create account']].map(([value, label]) =>
       <button key={value} type="button" aria-pressed={mode === value} onClick={() => { setMode(value); setSent(''); }}>{label}</button>)}</div>}
     {sent && <p role="status">{sent}</p>}
+    {!userId && mode === 'reset' && <p>Enter the email you used to register. We’ll send you a link to choose a new password.</p>}
     {!userId && <label>Email<input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} /></label>}
     {(recovery || (!userId && mode !== 'reset')) && <label>{recovery ? 'New password' : 'Password'}<input type="password" required minLength={mode === 'login' && !recovery ? 1 : 8} autoComplete={mode === 'login' && !recovery ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} /></label>}
+    {recovery && <label>Confirm new password<input type="password" required minLength={8} autoComplete="new-password" value={passwordAgain} onChange={e => setPasswordAgain(e.target.value)} /></label>}
     {!recovery && (userId || mode === 'signup') && <>
       <label>Display name<input required minLength={2} maxLength={40} autoComplete="nickname" value={name} onChange={e => setName(e.target.value)} /></label>
       <label>Country (optional)<input maxLength={60} value={country} onChange={e => setCountry(e.target.value)} /></label>
@@ -295,7 +299,7 @@ function Feed({ roomId, query, member, onRoom, ...actions }) {
   const posts = resource.items?.filter(post => [post.body, post.profile?.name, roomById[post.room_id]?.name]
     .some(value => value?.toLowerCase().includes(term)));
 
-  if (!member) return <p className="state">Sign in to read and join the conversations. <button className="text-button" onClick={actions.requireProfile}>Sign in</button></p>;
+  if (!member) return <div className="signin-state"><h3>Join the conversation</h3><p>Sign in to read posts, ask a question, or share something with other students.</p><button className="primary" onClick={actions.requireProfile}>Sign in or create an account <ArrowRight size={15} /></button></div>;
 
   return (
     <div className="feed">
@@ -329,7 +333,7 @@ function Chat({ roomId, member, ...actions }) {
     if (log.current) log.current.scrollTop = log.current.scrollHeight;
   }, [latestId]);
 
-  if (!member) return <p className="state">Sign in to read and send messages. <button className="text-button" onClick={actions.requireProfile}>Sign in</button></p>;
+  if (!member) return <div className="signin-state"><h3>Come in and say hello</h3><p>This chat is for registered students. Sign in to read messages and join in.</p><button className="primary" onClick={actions.requireProfile}>Sign in or create an account <ArrowRight size={15} /></button></div>;
 
   return (
     <div className="chat">
@@ -376,6 +380,7 @@ function App() {
   const [roomId, setRoomId] = useState(() => currentRoute(window.location).roomId);
   const [view, setView] = useState(() => currentRoute(window.location).view);
   const [recovery, setRecovery] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
   const [query, setQuery] = useState('');
   const [mobile, setMobile] = useState(false);
   const [modal, setModal] = useState(null);
@@ -387,11 +392,25 @@ function App() {
 
   useEffect(() => {
     if (!supabase) return;
+    let active = true;
+    const query = new URLSearchParams(location.search);
+    const fragment = new URLSearchParams(location.hash.slice(1));
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
+      if (error || query.has('error') || fragment.has('error') || ((query.get('reset') === '1' || query.has('code')) && !data.session)) {
+        setNotice('That email link couldn’t sign you in. For a password reset, request a new link here and open it in this same browser.');
+        setAuthMode('reset');
+        setModal('auth');
+        const url = new URL(location.href);
+        ['code', 'error', 'error_code', 'error_description', 'reset'].forEach(key => url.searchParams.delete(key));
+        history.replaceState(null, '', url.pathname + url.search);
+      }
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSessionUser(session?.user ?? null);
       if (event === 'PASSWORD_RECOVERY' || (session && new URLSearchParams(location.search).get('reset') === '1')) { setRecovery(true); setModal('auth'); }
     });
-    return () => subscription.unsubscribe();
+    return () => { active = false; subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => {
@@ -444,9 +463,11 @@ function App() {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#conversations">Skip to conversations</a>
       {mobile && <button className="mobile-backdrop" aria-label="Close navigation" onClick={() => setMobile(false)} />}
       <aside className={`sidebar ${mobile ? 'sidebar-open' : ''}`} aria-label="Community navigation">
         <button className="brand" onClick={() => navigate(null)}><span className="brand-icon"><MessageCircle size={21} /></span>interoom</button>
+        <p className="sidebar-caption">A community for international students.</p>
         <nav>
           <button className={!room ? 'current' : ''} aria-current={!room ? 'page' : undefined} onClick={() => navigate(null)}><Compass size={18} /> All conversations</button>
           <p className="nav-label">Rooms</p>
@@ -456,12 +477,13 @@ function App() {
             </button>
           ))}
         </nav>
-        <button className="sidebar-chat" onClick={() => navigate('general', 'chat')}><MessageCircle size={18} /> General chat <ArrowUpRight size={15} /></button>
+        <div className="sidebar-bottom"><button className="sidebar-chat" onClick={() => navigate('general', 'chat')}><MessageCircle size={18} /> General chat <ArrowUpRight size={15} /></button><p className="sidebar-note">Different schools. A shared room.</p></div>
       </aside>
 
       <div className="main">
         <header className="topbar">
           <button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={mobile} onClick={() => setMobile(!mobile)}><Menu size={23} /></button>
+          <span className="topbar-label">The student community</span>
           <label className="search">
             <Search size={17} />
             <input type="search" aria-label="Search recent posts" placeholder="Search recent posts" value={query} onChange={event => {
@@ -473,26 +495,27 @@ function App() {
         </header>
 
         <main className="content">
-          {!room && <section className="hero"><div className="hero-copy"><span className="eyebrow">INTEROOM</span><h1>Different places.<br /><em>Same wavelength.</em></h1><p>Meet other international students, share your experience, and talk about school and life abroad.</p><button className="primary" onClick={() => profile ? setModal('compose') : requireProfile()}>Start a conversation <ArrowUpRight size={18} /></button></div></section>}
-          <div className="page-intro">
-            {room && <button className="text-button back" onClick={() => navigate(null)}><ArrowLeft size={15} /> All conversations</button>}
-            <h1>{room ? room.name : 'Around the room'}</h1>
-            <p>{room?.description ?? 'A forum for international students to talk about school, moving countries, and what comes next.'}</p>
-          </div>
+          {!room ? <section className="welcome">
+            <div className="welcome-copy"><h1>Welcome to Interoom.</h1><p>A place to talk about school, moving abroad, and the things your friends back home might not get.</p></div>
+            <div className="welcome-note"><strong>New here?</strong><p>Start with a hello in General.<br />Tell us where you’re studying.</p><button className="text-button" onClick={() => navigate('general', 'chat')}>Go to General <ArrowRight size={14} /></button></div>
+          </section> : <div className="page-intro">
+            <button className="text-button back" onClick={() => navigate(null)}><ArrowLeft size={15} /> All conversations</button>
+            <h1>{room.name}</h1><p>{room.description}</p>
+          </div>}
 
           {!supabase && <p className="demo-note">Interoom is being connected. Accounts and conversations will be available shortly.</p>}
           {profileError && <p className="state" role="alert">Couldn’t load your profile. <button className="text-button" onClick={requireProfile}>Try again</button></p>}
           {notice && <p className="demo-note" role="status">{notice}</p>}
 
           <div className="below">
-            <section className="main-column" aria-label={view === 'chat' ? 'Room chat' : 'Discussion feed'}>
+            <section id="conversations" className="main-column" aria-label={view === 'chat' ? 'Room chat' : 'Discussion feed'}>
               <div className="feed-toolbar">
                 {room ? (
                   <div className="view-switch">
                     <button aria-pressed={view === 'posts'} onClick={() => navigate(roomId, 'posts')}>Posts</button>
                     <button aria-pressed={view === 'chat'} onClick={() => navigate(roomId, 'chat')}>Room chat</button>
                   </div>
-                ) : <h2>Latest posts</h2>}
+                ) : <h2>Recent conversations</h2>}
                 {view === 'posts' && <button className="primary" onClick={() => profile ? setModal('compose') : requireProfile()}><Plus size={17} /> New post</button>}
               </div>
               {view === 'chat' ? (
@@ -502,22 +525,23 @@ function App() {
               )}
             </section>
 
-            <aside className="room-guide right-card" aria-label="Room directory">
-              <h2>Pick a room</h2>
-              {rooms.map(item => (
+            <aside className="room-guide" aria-label="Room directory">
+              <h2>Find your room</h2>
+              {rooms.map((item, index) => (
                 <button key={item.id} onClick={() => navigate(item.id)}>
-                  <span className="room-symbol"><Hash size={17} /></span>
+                  <span className="room-number" aria-hidden="true">0{index + 1}</span>
                   <span><strong>{item.name}</strong><small>{item.description}</small></span>
                   <ArrowRight size={16} className="room-arrow" />
                 </button>
               ))}
+              <p className="room-etiquette"><strong>A quick reminder</strong>Be kind, leave personal details out of public conversations, and use the flag to report a problem.</p>
             </aside>
           </div>
         </main>
       </div>
 
-      {modal === 'auth' && <Modal title={recovery ? 'Reset password' : profile ? 'Your profile' : supabase && !userId ? 'Sign in to Interoom' : 'Choose a display name'} close={() => setModal(null)}>
-        <AuthForm key={`${userId}:${Boolean(profile)}:${recovery}`} recovery={recovery} metadata={sessionUser?.user_metadata} userId={userId} profile={profile} onSaved={next => { setProfile(next); setRecovery(false); const url = new URL(location.href); url.searchParams.delete('reset'); url.searchParams.delete('code'); history.replaceState(null, '', url.pathname + url.search); setModal(null); }} onSignOut={signOut} />
+      {modal === 'auth' && <Modal title={recovery ? 'Choose a new password' : profile ? 'Your profile' : supabase && !userId ? 'Sign in to Interoom' : 'Choose a display name'} close={() => setModal(null)}>
+        <AuthForm key={`${userId}:${Boolean(profile)}:${recovery}:${authMode}`} initialMode={authMode} recovery={recovery} metadata={sessionUser?.user_metadata} userId={userId} profile={profile} onSaved={next => { setProfile(next); if (recovery) setNotice('Password updated. You’re signed in.'); setRecovery(false); setAuthMode('login'); const url = new URL(location.href); url.searchParams.delete('reset'); url.searchParams.delete('code'); history.replaceState(null, '', url.pathname + url.search); setModal(null); }} onSignOut={signOut} />
       </Modal>}
       {modal === 'compose' && <Modal title="New post" close={() => setModal(null)}>
         <Compose selectedRoom={roomId} profile={profile} close={() => setModal(null)} onPosted={nextRoom => {

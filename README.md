@@ -1,6 +1,6 @@
 # Interoom
 
-International student discussions and room chat. React + Vite, Supabase Auth/Postgres/Realtime. Existing Interoom branding and purple styling are preserved. There are no seeded users, conversations, reactions, or invented activity counts.
+International student discussions and room chat. React + Vite, Supabase Auth/Postgres/Realtime. Interoom branding is preserved with a quieter forum layout, warm neutral backgrounds and restrained purple accents. There are no seeded users, conversations, reactions, or invented activity counts.
 
 ## Development
 
@@ -22,8 +22,9 @@ Use Node 22 or newer. Run `npm ci`, copy `.env.example` to `.env.local`, set the
 - [ ] Verify email delivery with a real test inbox; configure Supabase SMTP if necessary.
 - [ ] In Supabase Auth URL configuration, add the exact protected preview origin and `/?reset=1` callback. Production Site URL should be `https://www.interoom.org`; allow callbacks on www and each approved room host.
 - [ ] Complete signup, email confirmation, login, recovery and two-browser chat checks with real test accounts.
-- [ ] Obtain owner approval before production release or DNS/domain changes.
-- [ ] Configure production VITE variables, attach the five hosts to the existing Vercel project and verify DNS/TLS.
+- [x] Owner approved production publishing on 17 November 2026. Room DNS activation remains a separate rollout.
+- [x] Configure production Supabase VITE variables for the existing Interoom Vercel project.
+- [ ] Attach the five room hosts to the existing Vercel project and verify DNS/TLS.
 - [ ] Set VITE_ROOM_SUBDOMAINS=true only when the hosts resolve and callback URLs are allowed; rebuild.
 
 Room hosts: general.interoom.org, study.interoom.org, careers.interoom.org, abroad.interoom.org, culture.interoom.org. Until enabled, previews use `?room=...&view=chat` on the same origin. Production sessions share cookies only across the known Interoom domain; preview sessions stay on their own host.
