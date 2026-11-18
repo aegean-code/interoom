@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Compass, Flag, Hash, Heart,
-  Menu, MessageCircle, Plus, Search, Send, Trash2, X,
+  Menu, MessageCircle, Pause, Play, Plus, Search, Send, Trash2, X,
 } from 'lucide-react';
 import {
   addEntry, deleteEntry, getMessages, getPosts, getProfile, getReplies,
@@ -66,6 +66,26 @@ function useAction() {
 function Avatar({ name }) {
   const letters = (name || 'Member').split(/\s+/).slice(0, 2).map(word => word[0]).join('');
   return <span className="avatar" aria-hidden="true">{letters}</span>;
+}
+
+function OrbitalGlobe() {
+  const [paused, setPaused] = useState(false);
+  return <div className={`globe-art ${paused ? 'globe-paused' : ''}`}>
+    <div className="globe-illustration" aria-hidden="true">
+      <svg className="globe-orbit" viewBox="0 0 220 220">
+        <defs><path id="globe-type-path" d="M 110,110 m -98,0 a 98,98 0 1,1 196,0 a 98,98 0 1,1 -196,0" /></defs>
+        <text><textPath href="#globe-type-path" textLength="615">INTEROOM · AROUND THE WORLD · INTEROOM · AROUND THE WORLD · </textPath></text>
+      </svg>
+      <div className="globe-tilt"><div className="globe-sphere">
+        <div className="globe-meridians">{[0, 45, 90, 135].map(angle => <span key={angle} style={{ transform: `rotateY(${angle}deg)` }} />)}</div>
+        <span className="globe-equator" /><span className="globe-latitude globe-north" /><span className="globe-latitude globe-south" />
+      </div></div>
+      <svg className="globe-star" viewBox="0 0 32 32"><path d="M16 2v28M2 16h28M6 6l20 20M6 26L26 6" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
+    </div>
+    <button className="globe-toggle" aria-label={paused ? 'Play globe animation' : 'Pause globe animation'} onClick={() => setPaused(value => !value)}>
+      {paused ? <Play size={11} /> : <Pause size={11} />} {paused ? 'Play motion' : 'Pause motion'}
+    </button>
+  </div>;
 }
 
 function Status({ resource }) {
@@ -496,8 +516,8 @@ function App() {
 
         <main className="content">
           {!room ? <section className="welcome">
-            <div className="welcome-copy"><h1>Welcome to Interoom.</h1><p>A place to talk about school, moving abroad, and the things your friends back home might not get.</p></div>
-            <div className="welcome-note"><strong>New here?</strong><p>Start with a hello in General.<br />Tell us where you’re studying.</p><button className="text-button" onClick={() => navigate('general', 'chat')}>Go to General <ArrowRight size={14} /></button></div>
+            <div className="welcome-copy"><span className="welcome-eyebrow">Different schools. A shared room.</span><h1>Welcome to<br /><em>Interoom.</em></h1><p>A place to talk about school, moving abroad, and the things your friends back home might not get.</p><div className="welcome-note"><span>New here? Start with a hello.</span><button className="text-button" onClick={() => navigate('general', 'chat')}>Go to General <ArrowRight size={14} /></button></div></div>
+            <OrbitalGlobe />
           </section> : <div className="page-intro">
             <button className="text-button back" onClick={() => navigate(null)}><ArrowLeft size={15} /> All conversations</button>
             <h1>{room.name}</h1><p>{room.description}</p>
