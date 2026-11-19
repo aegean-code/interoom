@@ -16,6 +16,7 @@ export function currentRoute(location) {
   const room = Object.entries(roomHosts).find(([, host]) => location.hostname === `${host}.${rootDomain}`)?.[0];
   const query = new URLSearchParams(location.search);
   const requestedRoom = query.get('room');
+  if (['ambassadors', 'admin'].includes(query.get('view'))) return { roomId: null, view: query.get('view') };
   return {
     roomId: room || (Object.hasOwn(roomById, requestedRoom) ? requestedRoom : null),
     view: query.get('view') === 'chat' || (room && !query.has('view')) ? 'chat' : 'posts',
@@ -23,7 +24,7 @@ export function currentRoute(location) {
 }
 export function roomUrl(roomId, view, location, subdomainsEnabled) {
   const params = new URLSearchParams();
-  if (view === 'chat') params.set('view', 'chat');
+  if (['chat', 'ambassadors', 'admin'].includes(view)) params.set('view', view);
   const production = isInteroomHost(location.hostname) && subdomainsEnabled;
   if (!production && roomId) params.set('room', roomId);
   const origin = production

@@ -1,6 +1,6 @@
 # Interoom
 
-International student discussions and room chat. React + Vite, Supabase Auth/Postgres/Realtime. Interoom branding is preserved with a quieter forum layout, warm neutral backgrounds and restrained purple accents. There are no seeded users, conversations, reactions, or invented activity counts.
+International student discussions and room chat. React + Vite, Supabase Auth/Postgres/Realtime. Interoom branding is preserved with a quieter forum layout, warm neutral backgrounds and forest-green navigation and rust accents. There are no seeded users, conversations, reactions, or invented activity counts.
 
 ## Development
 
@@ -30,3 +30,11 @@ Use Node 22 or newer. Run `npm ci`, copy `.env.example` to `.env.local`, set the
 Room hosts: general.interoom.org, study.interoom.org, careers.interoom.org, abroad.interoom.org, culture.interoom.org. Until enabled, previews use `?room=...&view=chat` on the same origin. Production sessions share cookies only across the known Interoom domain; preview sessions stay on their own host.
 
 The initial feed loads 60 posts, a reply thread loads 100 replies and chat loads the latest 100 messages. Search filters loaded posts. Reporting records a private report for owner review; there is no staffed moderation service or automatic removal.
+
+## School ambassadors and admin access
+
+The ambassador directory is at `/?view=ambassadors`; the management panel is at `/?view=admin`. Members can add their school to their profile. Only an admin can assign a school ambassador badge, change the represented school, or remove the role. Badges appear with posts, replies and chat messages. There are no seeded ambassadors.
+
+`supabase/migrations/20261119000000_school_ambassadors.sql` adds the role tables and guarded RPCs. Admin membership is held in a private schema and must be provisioned by the project owner for a verified account; there is no client-side admin-grant endpoint. Member emails are returned only by the admin-only search. Assignment and removal actions are audited privately.
+
+`tests/ambassadors.sql` checks assign, update, remove, access revocation, anonymous denial, self-promotion prevention and profile ownership within a rolled-back transaction. The directory is paginated at 40 ambassadors per page; admin search returns at most 25 matches. Globe icons are served from `public/`.
