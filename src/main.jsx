@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, Compass, Flag, Hash, Heart,
+  ArrowLeft, ArrowRight, ArrowUpRight, Compass, Flag, GraduationCap, Hash, Heart, ShieldCheck,
   Menu, MessageCircle, Pause, Play, Plus, Search, Send, Trash2, X,
 } from 'lucide-react';
 import {
-  addEntry, deleteEntry, getMessages, getPosts, getProfile, getReplies,
+  addEntry, deleteEntry, getAdminStatus, getMessages, getPosts, getProfile, getReplies,
   reportEntry, saveProfile, setReaction, supabase,
 } from './community';
 import { roomById, rooms } from './rooms';
 import { currentRoute, roomUrl } from './routing';
+import { AmbassadorBadge, AmbassadorDirectory, AmbassadorAdmin } from './ambassadors';
 import './style.css';
 
 const timestamp = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -121,6 +122,7 @@ function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', 
   const [passwordAgain, setPasswordAgain] = useState('');
   const [name, setName] = useState(profile?.name ?? metadata?.name ?? '');
   const [country, setCountry] = useState(profile?.country ?? metadata?.country ?? '');
+  const [school, setSchool] = useState(profile?.school ?? metadata?.school ?? '');
   const [sent, setSent] = useState('');
   const { run, pending, error } = useAction();
   if (!supabase) return <p>Account setup is temporarily unavailable.</p>;
@@ -133,9 +135,8 @@ function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', 
         if (result.error) throw result.error;
         onSaved(profile);
       } else if (userId) {
-        const next = { name: name.trim(), country: country.trim() };
-        await saveProfile(userId, next, Boolean(profile));
-        onSaved(next);
+        const next = { name: name.trim(), country: country.trim(), school: school.trim() };
+        onSaved(await saveProfile(userId, next, Boolean(profile)));
       } else if (mode === 'reset') {
         const result = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: window.location.origin + '/?reset=1',
@@ -144,7 +145,7 @@ function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', 
         setSent('If an account exists for that email, you’ll receive a reset link. Open the newest email in this same browser.');
       } else if (mode === 'signup') {
         const result = await supabase.auth.signUp({ email: email.trim(), password,
-          options: { emailRedirectTo: window.location.origin + '/', data: { name: name.trim(), country: country.trim() } },
+          options: { emailRedirectTo: window.location.origin + '/', data: { name: name.trim(), country: country.trim(), school: school.trim() } },
         });
         if (result.error) throw result.error;
         setSent(result.data.session ? 'Account created. Finish setting up your profile.' : 'Check your inbox to confirm your email. Then sign in here.');
@@ -164,6 +165,8 @@ function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', 
     {recovery && <label>Confirm new password<input type="password" required minLength={8} autoComplete="new-password" value={passwordAgain} onChange={e => setPasswordAgain(e.target.value)} /></label>}
     {!recovery && (userId || mode === 'signup') && <>
       <label>Display name<input required minLength={2} maxLength={40} autoComplete="nickname" value={name} onChange={e => setName(e.target.value)} /></label>
+      <label>International school (optional)<input maxLength={120} value={school} onChange={e => setSchool(e.target.value)} /></label>
+      <AmbassadorBadge appointment={profile?.ambassadors} />
       <label>Country (optional)<input maxLength={60} value={country} onChange={e => setCountry(e.target.value)} /></label>
     </>}
     {error && <p className="error" role="alert">{error}</p>}
@@ -234,6 +237,7 @@ function Author({ entry }) {
       <Avatar name={entry.profile?.name} />
       <div>
         <strong>{entry.profile?.name || 'Member'}</strong>
+        <AmbassadorBadge appointment={entry.profile?.ambassadors} />
         <small>
           {[entry.profile?.country, entry.created_at && timestamp.format(new Date(entry.created_at))].filter(Boolean).join(' · ')}
         </small>
@@ -406,9 +410,22 @@ function App() {
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
   const [revision, setRevision] = useState(0);
+  const [admin, setAdmin] = useState(null);
+  const [roleError, setRoleError] = useState(false);
+  const [roleRetry, setRoleRetry] = useState(0);
   const userId = sessionUser?.id;
   const member = Boolean(userId);
   const room = roomById[roomId];
+  const specialView = view === 'ambassadors' || view === 'admin';
+
+  useEffect(() => {
+    let active = true;
+    setAdmin(null); setRoleError(false);
+    const refresh = () => { if (userId) getAdminStatus().then(value => { if (active) { setAdmin(value); setRoleError(false); } }).catch(() => { if (active) { setAdmin(null); setRoleError(true); } }); };
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.removeEventListener('focus', refresh); };
+  }, [userId, roleRetry]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -489,7 +506,9 @@ function App() {
         <button className="brand" onClick={() => navigate(null)}><span className="brand-icon"><MessageCircle size={21} /></span>interoom</button>
         <p className="sidebar-caption">A community for international students.</p>
         <nav>
-          <button className={!room ? 'current' : ''} aria-current={!room ? 'page' : undefined} onClick={() => navigate(null)}><Compass size={18} /> All conversations</button>
+          <button className={!room && !specialView ? 'current' : ''} aria-current={!room && !specialView ? 'page' : undefined} onClick={() => navigate(null)}><Compass size={18} /> All conversations</button>
+          <button className={view === 'ambassadors' ? 'current' : ''} aria-current={view === 'ambassadors' ? 'page' : undefined} onClick={() => navigate(null, 'ambassadors')}><GraduationCap size={18} /> Ambassadors</button>
+          {admin && <button className={view === 'admin' ? 'current' : ''} aria-current={view === 'admin' ? 'page' : undefined} onClick={() => navigate(null, 'admin')}><ShieldCheck size={18} /> Admin panel</button>}
           <p className="nav-label">Rooms</p>
           {rooms.map(item => (
             <button key={item.id} className={roomId === item.id ? 'current' : ''} aria-current={roomId === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
@@ -504,17 +523,21 @@ function App() {
         <header className="topbar">
           <button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={mobile} onClick={() => setMobile(!mobile)}><Menu size={23} /></button>
           <span className="topbar-label">The student community</span>
-          <label className="search">
+          {!specialView && <label className="search">
             <Search size={17} />
             <input type="search" aria-label="Search recent posts" placeholder="Search recent posts" value={query} onChange={event => {
               setQuery(event.target.value);
               if (view === 'chat') { const url = roomUrl(roomId, 'posts', window.location, false); history.replaceState(null, '', url); setView('posts'); }
             }} />
-          </label>
+          </label>}
+          {admin && <span className="admin-label">Admin</span>}
           <button className="account" onClick={requireProfile}>{profile && <Avatar name={profile.name} />}{profile?.name || (userId ? 'Set up profile' : 'Sign in')}</button>
         </header>
 
         <main className="content">
+          {specialView ? <>
+            {view === 'ambassadors' ? <AmbassadorDirectory member={member} signIn={requireProfile} /> : <AmbassadorAdmin member={member} admin={admin} roleError={roleError} refreshRole={() => setRoleRetry(v => v + 1)} signIn={requireProfile} onChanged={() => setProfileRetry(v => v + 1)} />}
+          </> : <>
           {!room ? <section className="welcome">
             <div className="welcome-copy"><span className="welcome-eyebrow">Different schools. A shared room.</span><h1>Welcome to<br /><em>Interoom.</em></h1><p>A place to talk about school, moving abroad, and the things your friends back home might not get.</p><div className="welcome-note"><span>New here? Start with a hello.</span><button className="text-button" onClick={() => navigate('general', 'chat')}>Go to General <ArrowRight size={14} /></button></div></div>
             <OrbitalGlobe />
@@ -557,6 +580,7 @@ function App() {
               <p className="room-etiquette"><strong>A quick reminder</strong>Be kind, leave personal details out of public conversations, and use the flag to report a problem.</p>
             </aside>
           </div>
+          </>}
         </main>
       </div>
 

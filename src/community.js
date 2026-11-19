@@ -9,18 +9,19 @@ export const supabase = url && key ? createBrowserClient(url, key, {
     ...(isInteroomHost(window.location.hostname) ? { domain: '.interoom.org' } : {}),
   },
 }) : null;
-const authors = 'profile:profiles(name,country)';
+const authors = 'profile:profiles(name,country,ambassadors(school))';
 const feedFields = `id,room_id,author_id,body,created_at,${authors},replies(count),reactions(count)`;
 async function data(result) {
   if (result.error) throw result.error;
   return result.data;
 }
 export async function getProfile(id) {
-  return data(await supabase.from('profiles').select('name,country').eq('id', id).maybeSingle());
+  return data(await supabase.from('profiles').select('name,country,school,ambassadors(school)').eq('id', id).maybeSingle());
 }
 export async function saveProfile(id, profile, exists) {
-  if (exists) return data(await supabase.from('profiles').update(profile).eq('id', id));
-  return data(await supabase.from('profiles').insert({ id, ...profile }));
+  if (exists) await data(await supabase.from('profiles').update(profile).eq('id', id));
+  else await data(await supabase.from('profiles').insert({ id, ...profile }));
+  return getProfile(id);
 }
 export async function getPosts(roomId, userId) {
   let query = supabase.from('posts').select(feedFields).order('created_at', { ascending: false }).limit(60);
@@ -52,4 +53,13 @@ export async function setReaction(post, userId) {
 export async function reportEntry(kind, id, reason) {
   const result = await supabase.from('reports').insert({ target_kind: kind, target_id: id, reason });
   if (result.error?.code !== '23505') return data(result);
+}
+
+export async function getAdminStatus() { return data(await supabase.rpc('is_community_admin')); }
+export async function findMembers(search) { return data(await supabase.rpc('find_community_members', { search_text: search })); }
+export async function setAmbassador(userId, school) { return data(await supabase.rpc('set_school_ambassador', { member_id: userId, school_name: school })); }
+export async function getAmbassadors(search = '', page = 0) {
+  let query = supabase.from('ambassadors').select('user_id,school,profile:profiles(name,country)').order('school').order('user_id');
+  if (search.trim()) query = query.ilike('school', '%' + search.trim().replace(/[\\%_]/g, '\\$&') + '%');
+  return data(await query.range(page * 40, page * 40 + 39));
 }

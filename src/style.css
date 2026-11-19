@@ -217,3 +217,41 @@ dialog::backdrop { background: #29242c66; }
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .globe-toggle { display: none; }
 }
+
+.ambassador-badge { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; border: 1px solid #d4dacb; border-radius: 4px; padding: 4px 7px; margin-top: 6px; color: #36563c; background: #eef1e6; font-size: 10px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.ambassador-badge svg { flex-shrink: 0; }
+.admin-label { margin-left: auto; color: #38523d; border: 1px solid #c7cbbb; padding: 5px 8px; font-size: 10px; border-radius: 4px; }
+.topbar:has(.admin-label) .search { margin-left: auto; }
+.topbar:has(.admin-label) .admin-label { margin-left: 0; }
+.page-intro .welcome-eyebrow { display: flex; align-items: center; gap: 6px; }
+.member-search { display: flex; align-items: end; gap: 12px; margin: 25px 0; max-width: 650px; }
+.member-search label, .appointment-form label { display: grid; gap: 8px; font-size: 12px; color: #526149; }
+.member-search label { flex: 1; min-width: 0; }
+.member-search input, .appointment-form input { width: 100%; padding: 11px; border: 1px solid #c7cbbb; border-radius: 4px; color: #263b32; background: var(--paper); }
+.member-search .primary { min-height: 41px; }
+.ambassador-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.ambassador-card { display: flex; align-items: flex-start; gap: 18px; padding: 26px; background: var(--paper); border: 1px solid var(--line); border-top: 3px solid #a7442c; border-radius: 5px; }
+.ambassador-card>svg { color: var(--accent); flex-shrink: 0; }
+.ambassador-card h2 { font-family: Georgia,serif; font-size: 22px; font-weight: 400; margin: 0 0 15px; overflow-wrap: anywhere; }
+.ambassador-card strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.ambassador-card p { font-size: 12px; color: var(--muted); margin: 6px 0; }
+.ambassador-note { color: var(--muted); font-size: 12px; line-height: 1.8; margin: 30px 0 0; max-width: 600px; }
+.pagination { display: flex; gap: 20px; align-items: center; font-size: 12px; margin-top: 20px; }
+.member-appointment { max-width: 820px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 25px; background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 24px; margin-bottom: 16px; }
+.member-identity { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; overflow-wrap: anywhere; }
+.member-identity strong { font-size: 15px; }
+.member-identity>span:not(.ambassador-badge), .member-identity small { color: var(--muted); font-size: 12px; }
+.appointment-form { min-width: 0; }
+.appointment-form .dialog-actions { margin-top: 12px; }
+.role-confirm, .role-status, .member-appointment>.error { grid-column: 1/-1; font-size: 12px; line-height: 1.7; margin: 0; }
+.role-confirm { border-top: 1px solid var(--line); padding-top: 16px; }
+.role-confirm button { margin-right: 20px; }
+.role-status { color: #36563c; }
+@media (max-width:650px) {
+ .ambassador-list, .member-appointment { grid-template-columns: 1fr; }
+ .member-search { flex-wrap: wrap; }
+ .member-search input, .appointment-form input { font-size: 16px; }
+ .member-search label { flex-basis: 100%; }
+ .admin-label { display: none; }
+ .ambassador-card { padding: 22px; }
+}
