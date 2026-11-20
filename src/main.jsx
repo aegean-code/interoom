@@ -11,6 +11,7 @@ import {
 import { roomById, rooms } from './rooms';
 import { currentRoute, roomUrl } from './routing';
 import { AmbassadorBadge, AmbassadorDirectory, AmbassadorAdmin } from './ambassadors';
+import { authCallbackFailure, authErrorMessage, cleanAuthCallbackUrl, emailRequests, sendAuthEmail } from './auth';
 import './style.css';
 
 const timestamp = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -53,15 +54,15 @@ function useAction() {
     setError('');
     try {
       await action();
-    } catch {
-      setError(message);
+    } catch (cause) {
+      setError(typeof message === 'function' ? message(cause) : message);
     } finally {
       busy.current = false;
       setPending(false);
     }
   }
 
-  return { pending, error, run };
+  return { pending, error, run, clearError: () => setError('') };
 }
 
 function Avatar({ name }) {
@@ -115,7 +116,7 @@ function Modal({ title, close, children }) {
   );
 }
 
-function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', onSaved, onSignOut }) {
+function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', initialNotice = '', onSaved, onSignOut }) {
   const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -124,44 +125,57 @@ function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', 
   const [country, setCountry] = useState(profile?.country ?? metadata?.country ?? '');
   const [school, setSchool] = useState(profile?.school ?? metadata?.school ?? '');
   const [sent, setSent] = useState('');
-  const { run, pending, error } = useAction();
+  const [linkError, setLinkError] = useState(initialNotice);
+  const [cooldown, setCooldown] = useState(emailRequests.remainingSeconds);
+  const { run, pending, error, clearError } = useAction();
+  useEffect(() => {
+    const timer = setInterval(() => setCooldown(emailRequests.remainingSeconds()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const sendsEmail = !userId && !recovery && ['signup', 'reset', 'verify'].includes(mode);
   if (!supabase) return <p>Account setup is temporarily unavailable.</p>;
+  function changeMode(next) {
+    if (pending) return;
+    setMode(next); setSent(''); setLinkError(''); clearError(); setPassword(''); setPasswordAgain('');
+    setCooldown(emailRequests.remainingSeconds());
+  }
   function submit(event) {
     event.preventDefault();
     run(async () => {
-      if (recovery) {
-        if (password !== passwordAgain) throw new Error('Passwords do not match');
-        const result = await supabase.auth.updateUser({ password });
-        if (result.error) throw result.error;
-        onSaved(profile);
-      } else if (userId) {
-        const next = { name: name.trim(), country: country.trim(), school: school.trim() };
-        onSaved(await saveProfile(userId, next, Boolean(profile)));
-      } else if (mode === 'reset') {
-        const result = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: window.location.origin + '/?reset=1',
-        });
-        if (result.error) throw result.error;
-        setSent('If an account exists for that email, you’ll receive a reset link. Open the newest email in this same browser.');
-      } else if (mode === 'signup') {
-        const result = await supabase.auth.signUp({ email: email.trim(), password,
-          options: { emailRedirectTo: window.location.origin + '/', data: { name: name.trim(), country: country.trim(), school: school.trim() } },
-        });
-        if (result.error) throw result.error;
-        setSent(result.data.session ? 'Account created. Finish setting up your profile.' : 'Check your inbox to confirm your email. Then sign in here.');
-      } else {
-        const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        if (result.error) throw result.error;
-      }
-    }, recovery && password !== passwordAgain ? 'The passwords don’t match.' : mode === 'login' && !userId ? 'Couldn’t sign in. Check your email and password and confirm your email first.' : 'Couldn’t complete that request. Please try again shortly.');
+      setSent(''); setLinkError('');
+      try {
+        if (recovery) {
+          if (password !== passwordAgain) throw { code: 'passwords_do_not_match' };
+          const result = await supabase.auth.updateUser({ password });
+          if (result.error) throw result.error;
+          onSaved(profile);
+        } else if (userId) {
+          const next = { name: name.trim(), country: country.trim(), school: school.trim() };
+          onSaved(await saveProfile(userId, next, Boolean(profile)));
+        } else if (sendsEmail) {
+          const result = await sendAuthEmail(supabase.auth, mode, {
+            email, password, origin: window.location.origin,
+            profile: { name: name.trim(), country: country.trim(), school: school.trim() },
+          });
+          if (mode === 'reset') setSent('If an account exists for that email, you’ll receive a reset link. Check your inbox and spam folder. Open the newest email in this same browser.');
+          else if (mode === 'verify') setSent('If that email has an unconfirmed account, you’ll receive a verification link. Check your inbox and spam folder. Open the newest email in this same browser.');
+          else setSent(result.data.session ? 'Account created. Finish setting up your profile.' : 'Check your inbox and spam folder for a verification link. Open the newest email in this same browser. If you already have an account, try signing in or resetting your password.');
+        } else {
+          const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+          if (result.error) throw result.error;
+        }
+      } finally { setCooldown(emailRequests.remainingSeconds()); }
+    }, cause => authErrorMessage(cause, recovery ? 'password' : userId ? 'profile' : mode));
   }
-  return <form className="dialog-form" onSubmit={submit}>
+  return <form className="dialog-form auth-form" onSubmit={submit} aria-busy={pending}>
     {!userId && <div className="view-switch">{[['login', 'Sign in'], ['signup', 'Create account']].map(([value, label]) =>
-      <button key={value} type="button" aria-pressed={mode === value} onClick={() => { setMode(value); setSent(''); }}>{label}</button>)}</div>}
+      <button key={value} type="button" disabled={pending} aria-pressed={mode === value} onClick={() => changeMode(value)}>{label}</button>)}</div>}
     {sent && <p role="status">{sent}</p>}
+    {linkError && <p className="error" role="alert">{linkError}</p>}
     {!userId && mode === 'reset' && <p>Enter the email you used to register. We’ll send you a link to choose a new password.</p>}
-    {!userId && <label>Email<input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} /></label>}
-    {(recovery || (!userId && mode !== 'reset')) && <label>{recovery ? 'New password' : 'Password'}<input type="password" required minLength={mode === 'login' && !recovery ? 1 : 8} autoComplete={mode === 'login' && !recovery ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} /></label>}
+    {!userId && mode === 'verify' && <p>Enter the email you registered with to request a new verification link.</p>}
+    {!userId && <label>Email<input type="email" required disabled={pending} autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setSent(''); clearError(); }} /></label>}
+    {(recovery || (!userId && ['login', 'signup'].includes(mode))) && <label>{recovery ? 'New password' : 'Password'}<input type="password" required disabled={pending} minLength={mode === 'login' && !recovery ? 1 : 8} autoComplete={mode === 'login' && !recovery ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} /></label>}
     {recovery && <label>Confirm new password<input type="password" required minLength={8} autoComplete="new-password" value={passwordAgain} onChange={e => setPasswordAgain(e.target.value)} /></label>}
     {!recovery && (userId || mode === 'signup') && <>
       <label>Display name<input required minLength={2} maxLength={40} autoComplete="nickname" value={name} onChange={e => setName(e.target.value)} /></label>
@@ -170,9 +184,13 @@ function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', 
       <label>Country (optional)<input maxLength={60} value={country} onChange={e => setCountry(e.target.value)} /></label>
     </>}
     {error && <p className="error" role="alert">{error}</p>}
-    <div className="dialog-actions"><button className="primary" disabled={pending}>{pending ? 'Please wait…' : recovery ? 'Save new password' : userId ? 'Save profile' : mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Sign in'}</button>
+    {sendsEmail && cooldown > 0 && <p>Another email request will be available in {cooldown}s. Delivery may take longer if the service is busy.</p>}
+    <div className="dialog-actions"><button className="primary" disabled={pending || (sendsEmail && cooldown > 0)}>{pending ? 'Please wait…' : recovery ? 'Save new password' : userId ? 'Save profile' : mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset link' : mode === 'verify' ? 'Resend verification email' : 'Sign in'}</button>
     {userId ? <button type="button" className="text-button" disabled={pending} onClick={() => run(onSignOut)}>Sign out</button> :
-      <button type="button" className="text-button" onClick={() => { setMode('reset'); setSent(''); }}>Forgot password?</button>}
+      <>
+        {mode !== 'reset' && <button type="button" className="text-button" disabled={pending} onClick={() => changeMode('reset')}>Forgot password?</button>}
+        {mode !== 'verify' && <button type="button" className="text-button" disabled={pending} onClick={() => changeMode('verify')}>Resend verification email</button>}
+      </>}
     </div>
   </form>;
 }
@@ -405,6 +423,7 @@ function App() {
   const [view, setView] = useState(() => currentRoute(window.location).view);
   const [recovery, setRecovery] = useState(false);
   const [authMode, setAuthMode] = useState('login');
+  const [authNotice, setAuthNotice] = useState('');
   const [query, setQuery] = useState('');
   const [mobile, setMobile] = useState(false);
   const [modal, setModal] = useState(null);
@@ -430,22 +449,21 @@ function App() {
   useEffect(() => {
     if (!supabase) return;
     let active = true;
-    const query = new URLSearchParams(location.search);
-    const fragment = new URLSearchParams(location.hash.slice(1));
+    const callbackUrl = new URL(location.href);
     supabase.auth.getSession().then(({ data, error }) => {
       if (!active) return;
-      if (error || query.has('error') || fragment.has('error') || ((query.get('reset') === '1' || query.has('code')) && !data.session)) {
-        setNotice('That email link couldn’t sign you in. For a password reset, request a new link here and open it in this same browser.');
-        setAuthMode('reset');
+      const failure = authCallbackFailure(callbackUrl, error, data.session);
+      if (failure) {
+        setAuthNotice(failure.message);
+        setRecovery(false);
+        setAuthMode(failure.mode);
         setModal('auth');
-        const url = new URL(location.href);
-        ['code', 'error', 'error_code', 'error_description', 'reset'].forEach(key => url.searchParams.delete(key));
-        history.replaceState(null, '', url.pathname + url.search);
+        history.replaceState(null, '', cleanAuthCallbackUrl(callbackUrl));
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSessionUser(session?.user ?? null);
-      if (event === 'PASSWORD_RECOVERY' || (session && new URLSearchParams(location.search).get('reset') === '1')) { setRecovery(true); setModal('auth'); }
+      if (event === 'PASSWORD_RECOVERY' || (session && new URLSearchParams(location.search).get('reset') === '1' && !authCallbackFailure(callbackUrl, null, session))) { setRecovery(true); setModal('auth'); }
     });
     return () => { active = false; subscription.unsubscribe(); };
   }, []);
@@ -584,8 +602,8 @@ function App() {
         </main>
       </div>
 
-      {modal === 'auth' && <Modal title={recovery ? 'Choose a new password' : profile ? 'Your profile' : supabase && !userId ? 'Sign in to Interoom' : 'Choose a display name'} close={() => setModal(null)}>
-        <AuthForm key={`${userId}:${Boolean(profile)}:${recovery}:${authMode}`} initialMode={authMode} recovery={recovery} metadata={sessionUser?.user_metadata} userId={userId} profile={profile} onSaved={next => { setProfile(next); if (recovery) setNotice('Password updated. You’re signed in.'); setRecovery(false); setAuthMode('login'); const url = new URL(location.href); url.searchParams.delete('reset'); url.searchParams.delete('code'); history.replaceState(null, '', url.pathname + url.search); setModal(null); }} onSignOut={signOut} />
+      {modal === 'auth' && <Modal title={recovery ? 'Choose a new password' : profile ? 'Your profile' : supabase && !userId ? 'Sign in to Interoom' : 'Choose a display name'} close={() => { setModal(null); setAuthNotice(''); }}>
+        <AuthForm key={`${userId}:${Boolean(profile)}:${recovery}:${authMode}`} initialMode={authMode} initialNotice={authNotice} recovery={recovery} metadata={sessionUser?.user_metadata} userId={userId} profile={profile} onSaved={next => { setAuthNotice(''); setProfile(next); if (recovery) setNotice('Password updated. You’re signed in.'); setRecovery(false); setAuthMode('login'); const url = new URL(location.href); url.searchParams.delete('reset'); url.searchParams.delete('code'); history.replaceState(null, '', url.pathname + url.search); setModal(null); }} onSignOut={signOut} />
       </Modal>}
       {modal === 'compose' && <Modal title="New post" close={() => setModal(null)}>
         <Compose selectedRoom={roomId} profile={profile} close={() => setModal(null)} onPosted={nextRoom => {
