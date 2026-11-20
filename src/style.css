@@ -161,6 +161,8 @@ dialog::backdrop { background: #29242c66; }
 .dialog-form .error { color: #a03548; }
 .dialog-actions { display: flex; align-items: center; gap: 17px; flex-wrap: wrap; margin-top: 3px; }
 .dialog-actions .text-button { font-size: 12px; }
+.auth-form, .auth-form p, .auth-form .text-button { font-size: 14px; }
+.auth-form input { font-size: 16px; }
 .mobile-backdrop { position: fixed; inset: 0; z-index: 19; background: #29242c66; border: 0; }
 .skip-link { position: fixed; top: -70px; left: 15px; z-index: 100; background: var(--paper); color: var(--accent); padding: 10px; }
 .skip-link:focus { top: 12px; }
