@@ -1,5 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { isInteroomHost } from './routing';
+import { loadPosts } from './posts';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -10,7 +11,6 @@ export const supabase = url && key ? createBrowserClient(url, key, {
   },
 }) : null;
 const authors = 'profile:profiles(name,country,ambassadors(school))';
-const feedFields = `id,room_id,author_id,body,created_at,${authors},replies(count),reactions(count)`;
 async function data(result) {
   if (result.error) throw result.error;
   return result.data;
@@ -24,13 +24,7 @@ export async function saveProfile(id, profile, exists) {
   return getProfile(id);
 }
 export async function getPosts(roomId, userId) {
-  let query = supabase.from('posts').select(feedFields).order('created_at', { ascending: false }).limit(60);
-  if (roomId) query = query.eq('room_id', roomId);
-  const posts = await data(await query);
-  if (!posts.length) return [];
-  const reactions = await data(await supabase.from('reactions').select('post_id').eq('author_id', userId).in('post_id', posts.map(p => p.id)));
-  const liked = new Set(reactions.map(r => r.post_id));
-  return posts.map(p => ({ ...p, liked: liked.has(p.id), reactionCount: p.reactions[0]?.count ?? 0, replyCount: p.replies[0]?.count ?? 0 }));
+  return loadPosts(supabase, roomId, userId);
 }
 export async function getReplies(postId) {
   return data(await supabase.from('replies').select(`id,author_id,body,created_at,${authors}`).eq('post_id', postId).order('created_at').limit(100));
