@@ -51,6 +51,7 @@ export async function reportEntry(kind, id, reason) {
 
 export async function getAdminStatus() { return data(await supabase.rpc('is_community_admin')); }
 export async function findMembers(search) { return data(await supabase.rpc('find_community_members', { search_text: search })); }
+export async function getAdminMembers(search = '', page = 0) { return data(await supabase.rpc('list_community_members', { search_text: search, page_number: page })); }
 export async function setAmbassador(userId, school) { return data(await supabase.rpc('set_school_ambassador', { member_id: userId, school_name: school })); }
 export async function getAmbassadors(search = '', page = 0) {
   let query = supabase.from('ambassadors').select('user_id,school,profile:profiles(name,country)').order('school').order('user_id');
