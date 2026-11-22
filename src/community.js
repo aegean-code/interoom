@@ -16,15 +16,15 @@ async function data(result) {
   return result.data;
 }
 export async function getProfile(id) {
-  return data(await supabase.from('profiles').select('name,country,school,ambassadors(school)').eq('id', id).maybeSingle());
+  return data(await supabase.from('profiles').select('name,country,school,username,ambassadors(school)').eq('id', id).maybeSingle());
 }
 export async function saveProfile(id, profile, exists) {
   if (exists) await data(await supabase.from('profiles').update(profile).eq('id', id));
   else await data(await supabase.from('profiles').insert({ id, ...profile }));
   return getProfile(id);
 }
-export async function getPosts(roomId, userId) {
-  return loadPosts(supabase, roomId, userId);
+export async function getPosts(roomId, userId, postId = null) {
+  return loadPosts(supabase, roomId, userId, postId);
 }
 export async function getReplies(postId) {
   return data(await supabase.from('replies').select(`id,author_id,body,created_at,${authors}`).eq('post_id', postId).order('created_at').limit(100));
