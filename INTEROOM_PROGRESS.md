@@ -40,6 +40,25 @@ Current limitations:
 - Authentication email delivery remains unverified. The auth improvements are retained in draft PR #4 pending configuration and real delivery/callback checks.
 - Google sign-in inspection is part of Priority 3.
 
+## Priority 2 batch — notifications
+
+Branch: `feat/notifications`, based on the private-messaging branch.
+
+Implemented:
+- Notification bell, red unread count, persistent history, individual/read-all controls and links opening the correct conversation or post.
+- Database-triggered private-message, reply, reaction and username-mention notifications. DM notices are grouped per conversation and contain no message body; duplicate actions and self-notifications are suppressed.
+- Notification rate limits and a five-recipient mention limit. Blocked actors are suppressed.
+- Separate post/chat unread counts in room navigation, starting with new activity after rollout. Read markers advance only through loaded entries.
+- Recipient-only RLS and server-controlled mutation functions. Stale single-item read requests cannot clear newer activity; mark-all uses a server snapshot.
+
+Files: `src/notifications*.js*`, `src/notifications.css`, existing navigation/feed/routing integration, `tests/notifications*.test.js`, post deep-link regression and the browser harness.
+
+Migration: `supabase/migrations/20261122053858_notifications.sql` adds notifications, room activity metadata, room read markers and guarded triggers/RPCs. This migration has NOT been applied to production. No historical content is backfilled.
+
+Validation: all 48 automated tests pass, including permission, deduplication, mention, rate-limit, pagination, read-state, room-counter and existing-feature checks. Production build and diff whitespace checks pass; the large-bundle warning remains. Browser checks cover immediate badges, refresh persistence, individual/read-all controls and opening a DM from its notification. The notification panel also passed the 390px mobile check with no horizontal overflow. This batch is ready for a draft PR, not production release.
+
+Not yet included: friend-request/acceptance notifications depend on Priority 4; followed-community preferences depend on Priority 8. Current rooms use navigation counters. Profile images still use initials until profile uploads exist. Hosted two-account Realtime verification remains a release gate.
+
 ## Next priorities
 
 2. Realtime notifications and navigation badges, using recipient-only records and no private-message previews in analytics.

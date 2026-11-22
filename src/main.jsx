@@ -12,6 +12,7 @@ import { roomById, rooms } from './rooms';
 import { currentRoute, roomUrl } from './routing';
 import { AmbassadorBadge, AmbassadorDirectory, AmbassadorAdmin } from './ambassadors';
 import { MessagesPage, UnreadBadge, useMessaging } from './messaging';
+import { NotificationBell, useNotifications, useRoomReadMarker } from './notifications';
 import './style.css';
 
 const timestamp = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -294,8 +295,8 @@ function Replies({ post, refreshPosts, ...actions }) {
   );
 }
 
-function Post({ post, refresh, onRoom, ...actions }) {
-  const [expanded, setExpanded] = useState(false);
+function Post({ post, refresh, onRoom, initiallyExpanded = false, ...actions }) {
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const { run, pending, error } = useAction();
 
   return (
@@ -319,9 +320,10 @@ function Post({ post, refresh, onRoom, ...actions }) {
   );
 }
 
-function Feed({ roomId, query, member, onRoom, ...actions }) {
-  const load = useCallback(() => member ? getPosts(roomId, actions.userId) : Promise.resolve([]), [member, roomId, actions.userId]);
+function Feed({ roomId, query, member, onRoom, postId, markRoomRead, ...actions }) {
+  const load = useCallback(() => member ? getPosts(roomId, actions.userId, postId) : Promise.resolve([]), [member, roomId, actions.userId, postId]);
   const resource = useResource(load);
+  useRoomReadMarker(!query && !postId ? roomId : null, 'posts', resource.error ? null : resource.items?.[0]?.id, markRoomRead);
   const term = query.trim().toLowerCase();
   const posts = resource.items?.filter(post => [post.body, post.profile?.name, roomById[post.room_id]?.name]
     .some(value => value?.toLowerCase().includes(term)));
@@ -331,17 +333,19 @@ function Feed({ roomId, query, member, onRoom, ...actions }) {
   return (
     <div className="feed">
       <Status resource={resource} />
-      {posts?.length === 0 && <p className="state">{term ? 'No matching posts.' : 'No posts in this room yet.'}</p>}
-      {posts?.map(post => <Post key={post.id} post={post} refresh={resource.refresh} onRoom={onRoom} {...actions} />)}
+      {postId && <button className="text-button" onClick={() => onRoom(roomId, 'posts')}>All posts in this room</button>}
+      {posts?.length === 0 && <p className="state">{postId ? 'This post is no longer available.' : term ? 'No matching posts.' : 'No posts in this room yet.'}</p>}
+      {posts?.map(post => <Post key={post.id} post={post} refresh={resource.refresh} onRoom={onRoom} initiallyExpanded={Boolean(postId)} {...actions} />)}
     </div>
   );
 }
 
-function Chat({ roomId, member, ...actions }) {
+function Chat({ roomId, member, markRoomRead, ...actions }) {
   const load = useCallback(() => member ? getMessages(roomId) : Promise.resolve([]), [member, roomId]);
   const resource = useResource(load);
   const { refresh } = resource;
   const log = useRef(null);
+  useRoomReadMarker(roomId, 'chat', resource.error ? null : resource.items?.at(-1)?.id, markRoomRead);
 
   useEffect(() => {
     if (!supabase || !member) return;
@@ -407,6 +411,7 @@ function App() {
   const [roomId, setRoomId] = useState(() => currentRoute(window.location).roomId);
   const [view, setView] = useState(() => currentRoute(window.location).view);
   const [conversationId, setConversationId] = useState(() => currentRoute(window.location).conversationId || null);
+  const [postId, setPostId] = useState(() => currentRoute(window.location).postId || null);
   const [recovery, setRecovery] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [query, setQuery] = useState('');
@@ -423,6 +428,8 @@ function App() {
   const specialView = ['ambassadors', 'admin', 'messages'].includes(view);
   const canMessage = Boolean(userId && sessionUser?.email_confirmed_at && profile);
   const inbox = useMessaging(canMessage ? userId : null);
+  const notifications = useNotifications(canMessage ? userId : null);
+  const roomUnread = (id, tab) => notifications.rooms.filter(item => item.room_id === id && (!tab || item.view === tab)).reduce((sum, item) => sum + Number(item.unread_count), 0);
 
   useEffect(() => {
     let active = true;
@@ -469,19 +476,20 @@ function App() {
     return () => { active = false; };
   }, [userId, profileRetry]);
 
-  function navigate(nextRoom, nextView = 'posts', nextConversation = null) {
-    const destination = new URL(roomUrl(nextRoom, nextView, window.location, import.meta.env.VITE_ROOM_SUBDOMAINS === 'true', nextConversation));
+  function navigate(nextRoom, nextView = 'posts', nextConversation = null, nextPost = null) {
+    const destination = new URL(roomUrl(nextRoom, nextView, window.location, import.meta.env.VITE_ROOM_SUBDOMAINS === 'true', nextConversation, nextPost));
     if (destination.origin !== window.location.origin) { window.location.assign(destination.href); return; }
     window.history.pushState(null, '', destination.href);
     setRoomId(nextRoom);
     setView(nextView);
     setConversationId(nextConversation);
+    setPostId(nextPost);
     setQuery('');
     setMobile(false);
   }
 
   useEffect(() => {
-    const update = () => { const route = currentRoute(window.location); setRoomId(route.roomId); setView(route.view); setConversationId(route.conversationId || null); };
+    const update = () => { const route = currentRoute(window.location); setRoomId(route.roomId); setView(route.view); setConversationId(route.conversationId || null); setPostId(route.postId || null); };
     window.addEventListener('popstate', update);
     return () => window.removeEventListener('popstate', update);
   }, []);
@@ -520,7 +528,7 @@ function App() {
           <p className="nav-label">Rooms</p>
           {rooms.map(item => (
             <button key={item.id} className={roomId === item.id ? 'current' : ''} aria-current={roomId === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
-              <Hash size={17} />{item.name}
+              <Hash size={17} />{item.name}<UnreadBadge count={roomUnread(item.id)} label="unread room updates" />
             </button>
           ))}
         </nav>
@@ -540,6 +548,7 @@ function App() {
           </label>}
           {admin && <span className="admin-label">Admin</span>}
           {member && <button className="icon-button" aria-label={`Messages${inbox.unread_count ? `, ${inbox.unread_count} unread` : ''}`} onClick={() => navigate(null, 'messages')}><MessageCircle size={20} /><UnreadBadge count={inbox.unread_count} /></button>}
+          {canMessage && <NotificationBell key={userId} notifications={notifications} onOpen={item => item.kind === 'dm' ? navigate(null, 'messages', item.conversation_id) : navigate(item.room_id, 'posts', null, item.post_id)} />}
           <button className="account" onClick={requireProfile}>{profile && <Avatar name={profile.name} />}{profile?.name || (userId ? 'Set up profile' : 'Sign in')}</button>
         </header>
 
@@ -564,16 +573,16 @@ function App() {
               <div className="feed-toolbar">
                 {room ? (
                   <div className="view-switch">
-                    <button aria-pressed={view === 'posts'} onClick={() => navigate(roomId, 'posts')}>Posts</button>
-                    <button aria-pressed={view === 'chat'} onClick={() => navigate(roomId, 'chat')}>Room chat</button>
+                    <button aria-pressed={view === 'posts'} onClick={() => navigate(roomId, 'posts')}>Posts<UnreadBadge count={roomUnread(roomId, 'posts')} label="unread posts" /></button>
+                    <button aria-pressed={view === 'chat'} onClick={() => navigate(roomId, 'chat')}>Room chat<UnreadBadge count={roomUnread(roomId, 'chat')} label="unread room messages" /></button>
                   </div>
                 ) : <h2>Recent conversations</h2>}
                 {view === 'posts' && <button className="primary" onClick={() => profile ? setModal('compose') : requireProfile()}><Plus size={17} /> New post</button>}
               </div>
               {view === 'chat' ? (
-                <Chat key={roomId} roomId={roomId} member={member} {...actions} />
+                <Chat key={roomId} roomId={roomId} member={member} markRoomRead={notifications.readRoom} {...actions} />
               ) : (
-                <Feed key={`${userId}:${roomId}:${revision}`} roomId={roomId} query={query} member={member} onRoom={navigate} {...actions} />
+                <Feed key={`${userId}:${roomId}:${revision}:${postId}`} roomId={roomId} query={query} postId={postId} member={member} onRoom={navigate} markRoomRead={notifications.readRoom} {...actions} />
               )}
             </section>
 

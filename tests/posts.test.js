@@ -63,3 +63,16 @@ test('feed errors remain errors instead of looking like an empty community', asy
   await assert.rejects(loadPosts(client, null, 'current-user'), error => error.code === '42501');
   assert.equal(requests.length, 1);
 });
+
+test('notification links fetch their exact post instead of relying on the newest 60', async () => {
+  const { client, requests } = fixture(url => {
+    if (url.pathname === '/rest/v1/posts') {
+      assert.equal(url.searchParams.get('id'), 'eq.older-post');
+      assert.equal(url.searchParams.get('room_id'), 'eq.general');
+      return Response.json([{ id: 'older-post', replies: [], reactions: [] }]);
+    }
+    return Response.json([]);
+  });
+  const posts = await loadPosts(client, 'general', 'current-user', 'older-post');
+  assert.equal(posts[0].id, 'older-post'); assert.equal(requests.length, 2);
+});
