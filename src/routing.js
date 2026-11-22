@@ -21,12 +21,14 @@ export function currentRoute(location) {
   return {
     roomId: room || (Object.hasOwn(roomById, requestedRoom) ? requestedRoom : null),
     view: query.get('view') === 'chat' || (room && !query.has('view')) ? 'chat' : 'posts',
+    ...(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query.get('post') || '') ? { postId: query.get('post') } : {}),
   };
 }
-export function roomUrl(roomId, view, location, subdomainsEnabled, conversationId = null) {
+export function roomUrl(roomId, view, location, subdomainsEnabled, conversationId = null, postId = null) {
   const params = new URLSearchParams();
   if (['chat', 'ambassadors', 'admin', 'messages'].includes(view)) params.set('view', view);
   if (view === 'messages' && conversationId) params.set('conversation', conversationId);
+  if (view === 'posts' && postId) { params.set('view', 'posts'); params.set('post', postId); }
   const production = isInteroomHost(location.hostname) && subdomainsEnabled;
   if (!production && roomId) params.set('room', roomId);
   const origin = production
