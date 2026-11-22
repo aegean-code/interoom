@@ -16,7 +16,7 @@ async function data(result) {
   return result.data;
 }
 export async function getProfile(id) {
-  return data(await supabase.from('profiles').select('name,country,school,ambassadors(school)').eq('id', id).maybeSingle());
+  return data(await supabase.from('profiles').select('name,country,school,username,ambassadors(school)').eq('id', id).maybeSingle());
 }
 export async function saveProfile(id, profile, exists) {
   if (exists) await data(await supabase.from('profiles').update(profile).eq('id', id));
