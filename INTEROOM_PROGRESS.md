@@ -19,35 +19,26 @@ Branch: `feat/private-messaging`.
 
 ## Validation and release
 
-Implemented locally on `feat/private-messaging`; production is unchanged.
+Private messaging implementation is saved in draft PR #7. The additive migration has been applied; the new frontend has not been released to production.
 
 Files:
-- `src/messaging.jsx`, `src/messaging-api.js`, `src/messaging.css`: inbox/thread, participant search, reliable retries, read receipts, owner deletion, blocking/reporting, privacy preferences, presence and responsive navigation.
-- `src/main.jsx`, `src/community.js`, `src/routing.js`: integration and optional unique usernames; conversation URLs survive refresh.
-- `supabase/migrations/20261121180814_private_messaging.sql`: seven additive tables (six public RLS tables and private reported-message evidence), optional username column, guarded RPCs, rate limits and Realtime publication entries. No existing content is rewritten. Apply this migration **before** deploying the frontend that selects `profiles.username`.
-- `tests/messaging.test.js`, `tests/messaging-client.test.js`: actual PostgreSQL permission/behavior tests plus client retry/event/route checks.
-- `tests/browser/`: reproducible local two-account browser harness; excluded from the production build.
+- `src/messaging.jsx`, `src/messaging-api.js`, `src/messaging.css`: inbox/thread, member search, send retries, read receipts, deletion, blocking/reporting, presence preferences and responsive navigation.
+- `src/main.jsx`, `src/community.js`, `src/routing.js`: integration, optional usernames and conversation URLs.
+- `supabase/migrations/20261121180814_private_messaging.sql`: additive messaging tables, participant access controls, guarded RPCs, rate limits and Realtime publication entries. Apply before deploying the frontend that selects `profiles.username`.
+- `tests/messaging.test.js`, `tests/messaging-client.test.js`, `tests/browser/`: database/client tests and an isolated browser harness excluded from production builds.
 
-Validation on 2026-11-22:
-- `npm test`: 34 passing tests, including existing posts/admin/routing regressions.
-- `npm run build`: passes with public environment configuration. Existing large-bundle warning remains (approximately 535 kB main chunk).
-- Local browser: two-way sending, immediate inbox updates/unread indicator, read receipts, history after refresh, mutual blocking/unblocking, reporting, deletion propagated to the peer, opt-in online status and 390px mobile layout checked. No horizontal overflow at 375px content width.
-- Browser harness uses real SQL and components with a local event bus; hosted Supabase Realtime and real-account authentication have **not** yet been verified.
+Validation:
+- 34 automated tests pass, including existing posts/admin/routing checks.
+- Production build passes; a large-bundle warning remains.
+- Local browser checks passed for two-way sending, inbox/unread updates, read receipts, refresh persistence, block/unblock, reporting, peer deletion updates, opt-in presence and 390px mobile layout.
+- The local harness uses real SQL and components with a substitute event bus. A live session connected successfully and member search was verified.
+- A second controlled session is still needed to verify hosted bidirectional delivery and refresh before merging. No production messages were created during the checks.
 
-Release gates:
-1. Save the tested checkpoint in a draft PR.
-2. Apply the additive migration after reviewing current production schema; never seed production fixture users/messages.
-3. Verify live delivery and refresh with two user-controlled registered accounts, including unread badges and access denial for a third account.
-4. Merge/deploy only after those checks pass. Keep the additive schema if a frontend rollback is needed; do not delete message records.
-
-Profile images currently use initials, matching existing accounts. Uploaded profile pictures remain part of Priority 4. Reports retain only the reported message and reason in private storage; the moderator review interface is part of Priority 5.
-
-## Known blockers / pending verification
-
-- Email delivery is NOT confirmed fixed. Resend `auth.interoom.org` domain was prepared; DNS verification and Supabase SMTP configuration are pending. Auth error/resend improvements are retained in draft PR #4. Do not claim reliable delivery until real inbox/callback tests pass.
-- Google OAuth configuration needs inspection under Priority 3.
-- Live private-message verification needs two user-controlled authenticated accounts; never extract sessions or credentials from the browser.
-- Existing Supabase advisories: private tables deliberately deny direct access; legacy guarded public definer RPCs; `rls_auto_enable()` execute grants and leaked-password protection warrant later review. Do not broaden this batch into unrelated changes.
+Current limitations:
+- Profile images use initials; uploads are part of Priority 4.
+- Report evidence is stored privately; the moderator review interface is part of Priority 5.
+- Authentication email delivery remains unverified. The auth improvements are retained in draft PR #4 pending configuration and real delivery/callback checks.
+- Google sign-in inspection is part of Priority 3.
 
 ## Next priorities
 
