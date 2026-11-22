@@ -9,7 +9,7 @@ Completed and deployed before this batch:
 - Admin registered-user directory, including unfinished accounts; 18 tests passed (PR #6, main `83d8262`).
 - Existing globe favicon and public room chat. Do not rebuild these features.
 
-## Priority 1 — private messaging implemented
+## Priority 1 — private messaging deployed
 
 Branch: `feat/private-messaging`.
 - Reuse Supabase session, profiles, sidebar navigation, existing visual identity and error/empty-state conventions.
@@ -19,7 +19,9 @@ Branch: `feat/private-messaging`.
 
 ## Validation and release
 
-Release source: PR #7 (private messaging) and PR #8 (notifications). Production rollout is authorized through the existing main-to-Vercel deployment pipeline. Both additive database migrations have been applied without rewriting existing community content.
+Release source: PR #8 (notifications) was merged into PR #7 (private messaging), and PR #7 was merged into main as `515075e` on 2026-11-22. Vercel completed the production deployment and the existing Interoom domains serve the release. Both additive database migrations have been applied without rewriting existing community content.
+
+Production smoke check: the community landing page and new Messages navigation render successfully, and signed-out visitors see the private-message sign-in gate. The signed-in notification behavior was validated in the isolated browser harness; hosted two-account delivery remains untested as documented below. No additional account or live test message was needed for release.
 
 Files:
 - `src/messaging.jsx`, `src/messaging-api.js`, `src/messaging.css`: inbox/thread, member search, send retries, read receipts, deletion, blocking/reporting, presence preferences and responsive navigation.
@@ -40,7 +42,7 @@ Current limitations:
 - Authentication email delivery remains unverified. The auth improvements are retained in draft PR #4 pending configuration and real delivery/callback checks.
 - Google sign-in inspection is part of Priority 3.
 
-## Priority 2 batch — notifications
+## Priority 2 — notifications deployed
 
 Branch: `feat/notifications`, based on the private-messaging branch. Implemented in PR #8: https://github.com/aegean-code/interoom/pull/8.
 
@@ -55,7 +57,7 @@ Files: `src/notifications*.js*`, `src/notifications.css`, existing navigation/fe
 
 Migration: `supabase/migrations/20261122053858_notifications.sql` adds notifications, room activity metadata, room read markers and guarded triggers/RPCs. This migration has been applied to production. No historical content is backfilled.
 
-Validation: all 48 automated tests pass, including permission, deduplication, mention, rate-limit, pagination, read-state, room-counter and existing-feature checks. Production build and diff whitespace checks pass; the large-bundle warning remains. Browser checks cover immediate badges, refresh persistence, individual/read-all controls and opening a DM from its notification. The notification panel also passed the 390px mobile check with no horizontal overflow. The branch preview build is READY. Production release is authorized using the automated tests and isolated browser checks, without requiring a second live account.
+Validation: all 48 automated tests pass, including permission, deduplication, mention, rate-limit, pagination, read-state, room-counter and existing-feature checks. Production build and diff whitespace checks pass; the large-bundle warning remains. Browser checks cover immediate badges, refresh persistence, individual/read-all controls and opening a DM from its notification. The notification panel also passed the 390px mobile check with no horizontal overflow. The preview and production builds completed successfully. Production release used the automated tests and isolated browser checks, without requiring a second live account.
 
 Not yet included: friend-request/acceptance notifications depend on Priority 4; followed-community preferences depend on Priority 8. Current rooms use navigation counters. Profile images still use initials until profile uploads exist. Hosted two-account Realtime verification is an outstanding optional check, not a release gate.
 
