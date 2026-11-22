@@ -42,7 +42,7 @@ Current limitations:
 
 ## Priority 2 batch — notifications
 
-Branch: `feat/notifications`, based on the private-messaging branch.
+Branch: `feat/notifications`, based on the private-messaging branch. Saved in draft PR #8: https://github.com/aegean-code/interoom/pull/8.
 
 Implemented:
 - Notification bell, red unread count, persistent history, individual/read-all controls and links opening the correct conversation or post.
@@ -55,7 +55,7 @@ Files: `src/notifications*.js*`, `src/notifications.css`, existing navigation/fe
 
 Migration: `supabase/migrations/20261122053858_notifications.sql` adds notifications, room activity metadata, room read markers and guarded triggers/RPCs. This migration has NOT been applied to production. No historical content is backfilled.
 
-Validation: all 48 automated tests pass, including permission, deduplication, mention, rate-limit, pagination, read-state, room-counter and existing-feature checks. Production build and diff whitespace checks pass; the large-bundle warning remains. Browser checks cover immediate badges, refresh persistence, individual/read-all controls and opening a DM from its notification. The notification panel also passed the 390px mobile check with no horizontal overflow. This batch is ready for a draft PR, not production release.
+Validation: all 48 automated tests pass, including permission, deduplication, mention, rate-limit, pagination, read-state, room-counter and existing-feature checks. Production build and diff whitespace checks pass; the large-bundle warning remains. Browser checks cover immediate badges, refresh persistence, individual/read-all controls and opening a DM from its notification. The notification panel also passed the 390px mobile check with no horizontal overflow. The branch preview build is READY. This batch remains a draft awaiting migration rollout and the two-account live check.
 
 Not yet included: friend-request/acceptance notifications depend on Priority 4; followed-community preferences depend on Priority 8. Current rooms use navigation counters. Profile images still use initials until profile uploads exist. Hosted two-account Realtime verification remains a release gate.
 
