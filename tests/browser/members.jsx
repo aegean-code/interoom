@@ -13,7 +13,7 @@ import roles from '../../supabase/migrations/20261119000000_school_ambassadors.s
 import admin from '../../supabase/migrations/20261121000000_admin_member_directory.sql?raw';
 import dm from '../../supabase/migrations/20261121180814_private_messaging.sql?raw';
 import notices from '../../supabase/migrations/20261122053858_notifications.sql?raw';
-import friends from '../../supabase/migrations/20261126000000_friends_profiles.sql?raw';
+import friends from '../../supabase/migrations/20261126175754_friends_profiles.sql?raw';
 document.getElementById('root').textContent='Starting isolated members database…';
 const asset='/node_modules/@electric-sql/pglite/dist/';
 const db=new PGlite({dataDir:'idb://interoom-members-qa-1',fsBundle:await (await fetch(asset+'pglite.data')).blob(),pgliteWasmModule:await WebAssembly.compile(await (await fetch(asset+'pglite.wasm')).arrayBuffer()),initdbWasmModule:await WebAssembly.compile(await (await fetch(asset+'initdb.wasm')).arrayBuffer())});
