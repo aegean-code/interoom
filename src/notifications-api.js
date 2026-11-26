@@ -24,6 +24,6 @@ export function createNotificationsApi(client) {
 }
 
 export function notificationLabel(notice) {
-  const action = { dm: 'sent you a private message', reply: 'replied to your post', reaction: 'liked your post', mention: 'mentioned you' }[notice.kind] || 'shared an update';
+  const action = { dm: 'sent you a private message', reply: 'replied to your post', reaction: 'liked your post', mention: 'mentioned you', friend_request: 'sent you a friend request', friend_accepted: 'accepted your friend request' }[notice.kind] || 'shared an update';
   return `${notice.name || 'A member'} ${action}`;
 }

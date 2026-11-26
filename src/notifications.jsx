@@ -81,7 +81,7 @@ export function NotificationBell({ notifications, onOpen }) {
       <div className="notification-toolbar"><span role="status">{notifications.connected ? 'Up to date' : 'Reconnecting…'}</span><button className="text-button" disabled={pending || !notifications.unread_count || !notifications.snapshot_at} onClick={() => run(notifications.readAll)}>Mark all as read</button></div>
       {notifications.loading && <p className="state" role="status">Loading notifications…</p>}
       {(notifications.error || error) && <p className="error notification-status" role="alert">{error || notifications.error} <button className="text-button" onClick={notifications.refresh}>Retry</button></p>}
-      {!notifications.loading && !notifications.error && !notifications.items.length && <div className="notification-empty"><Bell size={28} /><h3>You’re all caught up.</h3><p>Replies, mentions, reactions and private messages will appear here.</p></div>}
+      {!notifications.loading && !notifications.error && !notifications.items.length && <div className="notification-empty"><Bell size={28} /><h3>You’re all caught up.</h3><p>Friend requests, replies, mentions, reactions and private messages will appear here.</p></div>}
       <ul className="notification-list">{notifications.items.map(item => <li key={item.id} className={!item.read_at && !item.unavailable ? 'notification-unread' : ''}>
         <button className="notification-item" disabled={pending || item.unavailable} onClick={() => run(async () => { await notifications.read(item); close(); onOpen(item); })}>
           <span className="dm-avatar" aria-hidden="true">{(item.name || 'Member').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('')}</span>

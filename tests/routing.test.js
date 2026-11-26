@@ -24,7 +24,7 @@ test('production subdomains are enabled only after provisioning', () => {
 });
 
 test('ambassador and admin pages survive reload and navigation from a room', () => {
- for (const view of ['ambassadors','admin']) {
+ for (const view of ['ambassadors','admin','members']) {
   assert.deepEqual(currentRoute(new URL(`https://general.interoom.org/?view=${view}`)), {roomId:null,view});
   const url=roomUrl(null,view,new URL('https://www.interoom.org/'),false);
   assert.deepEqual(currentRoute(new URL(url)),{roomId:null,view});

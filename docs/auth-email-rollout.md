@@ -8,7 +8,7 @@ On 25 November 2026, production Auth logs still showed HTTP 429 responses with `
 
 On 26 November 2026, Resend reported that all three required DNS records were missing and verification had failed. Registrar sign-in had not completed, so the DNS records remain unchanged. Add the current records shown by Resend, then restart verification; retrying verification before the records exist will not fix delivery.
 
-On 26 November 2026, the owner configured Google's OAuth credentials in Supabase and the public Auth settings confirmed Google enabled. The exact production callback `https://www.interoom.org/?auth=google` is allowlisted. The new sign-in screen offers Google or email, with existing email login, registration and recovery behind the email choice. Live Google sign-in and session persistence still need verification after deployment; provider availability alone is not proof of a working OAuth exchange.
+On 26 November 2026, the owner configured Google's OAuth credentials in Supabase and the public Auth settings confirmed Google enabled. The exact production callback `https://www.interoom.org/?auth=google` is allowlisted. PR #4 was deployed as `f1725ac`. A production Google OAuth test authenticated the owner's existing account, preserved its profile and admin access, returned to `https://www.interoom.org/`, removed callback parameters, and remained signed in after a full page refresh. The new screen offers Google or email, with existing email login, registration and recovery behind the email choice. Resend email delivery is still unfinished.
 
 ## Integration
 

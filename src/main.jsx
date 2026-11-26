@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Compass, Flag, GraduationCap, Hash, Heart, ShieldCheck,
-  Mail, Menu, MessageCircle, Pause, Play, Plus, Search, Send, Trash2, X,
+  Mail, Menu, MessageCircle, Pause, Play, Plus, Search, Send, Trash2, Users, X,
 } from 'lucide-react';
 import {
   addEntry, deleteEntry, getAdminStatus, getMessages, getPosts, getProfile, getReplies,
@@ -14,6 +14,7 @@ import { AmbassadorBadge, AmbassadorDirectory, AmbassadorAdmin } from './ambassa
 import { authCallbackFailure, authErrorMessage, cleanAuthCallbackUrl, emailRequests, googleSignInAvailable, googleSignInUrl, initialAuthSession, sendAuthEmail } from './auth';
 import { MessagesPage, UnreadBadge, useMessaging } from './messaging';
 import { NotificationBell, useNotifications, useRoomReadMarker } from './notifications';
+import { MembersPage } from './members';
 import './style.css';
 
 const timestamp = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -482,7 +483,7 @@ function App() {
   const userId = sessionUser?.id;
   const member = Boolean(userId);
   const room = roomById[roomId];
-  const specialView = ['ambassadors', 'admin', 'messages'].includes(view);
+  const specialView = ['ambassadors', 'admin', 'messages', 'members'].includes(view);
   const canMessage = Boolean(userId && sessionUser?.email_confirmed_at && profile);
   const inbox = useMessaging(canMessage ? userId : null);
   const notifications = useNotifications(canMessage ? userId : null);
@@ -581,6 +582,7 @@ function App() {
         <nav>
           <button className={!room && !specialView ? 'current' : ''} aria-current={!room && !specialView ? 'page' : undefined} onClick={() => navigate(null)}><Compass size={18} /> All conversations</button>
           <button className={view === 'messages' ? 'current' : ''} aria-current={view === 'messages' ? 'page' : undefined} onClick={() => navigate(null, 'messages')}><MessageCircle size={18} /> Messages <UnreadBadge count={inbox.unread_count} /></button>
+          <button className={view === 'members' ? 'current' : ''} aria-current={view === 'members' ? 'page' : undefined} onClick={() => navigate(null, 'members')}><Users size={18} /> Members</button>
           <button className={view === 'ambassadors' ? 'current' : ''} aria-current={view === 'ambassadors' ? 'page' : undefined} onClick={() => navigate(null, 'ambassadors')}><GraduationCap size={18} /> Ambassadors</button>
           {admin && <button className={view === 'admin' ? 'current' : ''} aria-current={view === 'admin' ? 'page' : undefined} onClick={() => navigate(null, 'admin')}><ShieldCheck size={18} /> Admin panel</button>}
           <p className="nav-label">Rooms</p>
@@ -606,13 +608,13 @@ function App() {
           </label>}
           {admin && <span className="admin-label">Admin</span>}
           {member && <button className="icon-button" aria-label={`Messages${inbox.unread_count ? `, ${inbox.unread_count} unread` : ''}`} onClick={() => navigate(null, 'messages')}><MessageCircle size={20} /><UnreadBadge count={inbox.unread_count} /></button>}
-          {canMessage && <NotificationBell key={userId} notifications={notifications} onOpen={item => item.kind === 'dm' ? navigate(null, 'messages', item.conversation_id) : navigate(item.room_id, 'posts', null, item.post_id)} />}
+          {canMessage && <NotificationBell key={userId} notifications={notifications} onOpen={item => item.kind.startsWith('friend_') ? navigate(null, 'members') : item.kind === 'dm' ? navigate(null, 'messages', item.conversation_id) : navigate(item.room_id, 'posts', null, item.post_id)} />}
           <button className="account" onClick={requireProfile}>{profile && <Avatar name={profile.name} />}{profile?.name || (userId ? 'Set up profile' : 'Sign in')}</button>
         </header>
 
         <main className="content">
           {specialView ? <>
-            {view === 'messages' ? <MessagesPage key={userId || 'guest'} userId={userId} eligible={canMessage} inbox={inbox} conversationId={conversationId} openConversation={id => navigate(null, 'messages', id)} signIn={requireProfile} /> : view === 'ambassadors' ? <AmbassadorDirectory member={member} signIn={requireProfile} /> : <AmbassadorAdmin member={member} admin={admin} roleError={roleError} refreshRole={() => setRoleRetry(v => v + 1)} signIn={requireProfile} onChanged={() => setProfileRetry(v => v + 1)} />}
+            {view === 'members' ? <MembersPage key={userId || 'guest'} userId={userId} eligible={canMessage} signIn={requireProfile} openConversation={id => navigate(null, 'messages', id)} /> : view === 'messages' ? <MessagesPage key={userId || 'guest'} userId={userId} eligible={canMessage} inbox={inbox} conversationId={conversationId} openConversation={id => navigate(null, 'messages', id)} signIn={requireProfile} /> : view === 'ambassadors' ? <AmbassadorDirectory member={member} signIn={requireProfile} /> : <AmbassadorAdmin member={member} admin={admin} roleError={roleError} refreshRole={() => setRoleRetry(v => v + 1)} signIn={requireProfile} onChanged={() => setProfileRetry(v => v + 1)} />}
           </> : <>
           {!room ? <section className="welcome">
             <div className="welcome-copy"><span className="welcome-eyebrow">Different schools. A shared room.</span><h1>Welcome to<br /><em>Interoom.</em></h1><p>A place to talk about school, moving abroad, and the things your friends back home might not get.</p><div className="welcome-note"><span>New here? Start with a hello.</span><button className="text-button" onClick={() => navigate('general', 'chat')}>Go to General <ArrowRight size={14} /></button></div></div>
