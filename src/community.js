@@ -1,5 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { isInteroomHost } from './routing';
+import { loadPosts } from './posts';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -10,27 +11,20 @@ export const supabase = url && key ? createBrowserClient(url, key, {
   },
 }) : null;
 const authors = 'profile:profiles(name,country,ambassadors(school))';
-const feedFields = `id,room_id,author_id,body,created_at,${authors},replies(count),reactions(count)`;
 async function data(result) {
   if (result.error) throw result.error;
   return result.data;
 }
 export async function getProfile(id) {
-  return data(await supabase.from('profiles').select('name,country,school,ambassadors(school)').eq('id', id).maybeSingle());
+  return data(await supabase.from('profiles').select('name,country,school,username,ambassadors(school)').eq('id', id).maybeSingle());
 }
 export async function saveProfile(id, profile, exists) {
   if (exists) await data(await supabase.from('profiles').update(profile).eq('id', id));
   else await data(await supabase.from('profiles').insert({ id, ...profile }));
   return getProfile(id);
 }
-export async function getPosts(roomId, userId) {
-  let query = supabase.from('posts').select(feedFields).order('created_at', { ascending: false }).limit(60);
-  if (roomId) query = query.eq('room_id', roomId);
-  const posts = await data(await query);
-  if (!posts.length) return [];
-  const reactions = await data(await supabase.from('reactions').select('post_id').eq('author_id', userId).in('post_id', posts.map(p => p.id)));
-  const liked = new Set(reactions.map(r => r.post_id));
-  return posts.map(p => ({ ...p, liked: liked.has(p.id), reactionCount: p.reactions[0]?.count ?? 0, replyCount: p.replies[0]?.count ?? 0 }));
+export async function getPosts(roomId, userId, postId = null) {
+  return loadPosts(supabase, roomId, userId, postId);
 }
 export async function getReplies(postId) {
   return data(await supabase.from('replies').select(`id,author_id,body,created_at,${authors}`).eq('post_id', postId).order('created_at').limit(100));
@@ -57,6 +51,7 @@ export async function reportEntry(kind, id, reason) {
 
 export async function getAdminStatus() { return data(await supabase.rpc('is_community_admin')); }
 export async function findMembers(search) { return data(await supabase.rpc('find_community_members', { search_text: search })); }
+export async function getAdminMembers(search = '', page = 0) { return data(await supabase.rpc('list_community_members', { search_text: search, page_number: page })); }
 export async function setAmbassador(userId, school) { return data(await supabase.rpc('set_school_ambassador', { member_id: userId, school_name: school })); }
 export async function getAmbassadors(search = '', page = 0) {
   let query = supabase.from('ambassadors').select('user_id,school,profile:profiles(name,country)').order('school').order('user_id');

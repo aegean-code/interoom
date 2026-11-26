@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createClient } from '@supabase/supabase-js';
-import { authCallbackFailure, authEmailRedirect, authErrorMessage, cleanAuthCallbackUrl, createEmailRequestGate, sendAuthEmail } from '../src/auth.js';
+import { authCallbackFailure, authEmailRedirect, authErrorMessage, cleanAuthCallbackUrl, createEmailRequestGate, googleSignInAvailable, googleSignInUrl, initialAuthSession, sendAuthEmail } from '../src/auth.js';
 
 function memoryStorage() {
   const values = new Map();
@@ -170,4 +170,92 @@ test('callback cleanup removes auth data but preserves room navigation', () => {
   const url = new URL('https://www.interoom.org/?room=general&view=chat&reset=1&code=secret&sb_flow_id=verifier-id&error=bad&error_code=otp_expired&error_description=private#access_token=secret');
   assert.equal(cleanAuthCallbackUrl(url), '/?room=general&view=chat');
   assert.ok(url.searchParams.has('code'), 'input URL is not mutated');
+});
+
+test('Google OAuth uses the existing Auth project, PKCE, minimal scopes and an exact callback', async () => {
+  let networkCalls = 0;
+  const storage = memoryStorage();
+  const client = createClient('https://auth-test.invalid', 'public-test-key', {
+    auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: false, detectSessionInUrl: false, storage },
+    global: { fetch: async () => { networkCalls++; throw new Error('No email or token request should be made when starting OAuth'); } },
+  });
+  const url = new URL(await googleSignInUrl(client.auth, 'https://www.interoom.org'));
+  assert.equal(url.origin, 'https://auth-test.invalid');
+  assert.equal(url.pathname, '/auth/v1/authorize');
+  assert.equal(url.searchParams.get('provider'), 'google');
+  assert.equal(url.searchParams.get('redirect_to'), 'https://www.interoom.org/?auth=google');
+  assert.equal(url.searchParams.get('scopes'), 'openid email profile');
+  assert.equal(url.searchParams.get('prompt'), 'select_account');
+  assert.equal(url.searchParams.get('access_type'), null);
+  assert.equal(url.searchParams.get('code_challenge_method'), 's256');
+  assert.ok(url.searchParams.get('code_challenge'));
+  assert.equal(networkCalls, 0);
+  assert.ok([...storage.values.keys()].some(key => key.includes('code-verifier')));
+});
+
+test('Google initiation failures do not navigate and have safe user-facing errors', async () => {
+  const providerError = { code: 'provider_disabled', message: 'private provider detail' };
+  await assert.rejects(googleSignInUrl({ signInWithOAuth: async () => ({ error: providerError }) }, 'https://www.interoom.org'), cause => cause === providerError);
+  assert.match(authErrorMessage(providerError, 'google'), /temporarily unavailable/);
+  assert.equal(authErrorMessage(providerError, 'google').includes(providerError.message), false);
+  await assert.rejects(googleSignInUrl({ signInWithOAuth: async () => ({ data: {} }) }, 'https://www.interoom.org'), { code: 'oauth_redirect_failed' });
+  assert.match(authErrorMessage(new Error('sensitive detail'), 'google'), /Couldn’t continue with Google/);
+});
+
+test('Google availability is read using only the publishable key without a user session', async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const available = await googleSignInAvailable('https://auth-test.invalid', 'public-test-key', {
+    signal: controller.signal,
+    fetch: async (url, options) => {
+      calls++;
+      assert.equal(url.href, 'https://auth-test.invalid/auth/v1/settings');
+      assert.deepEqual(options.headers, { apikey: 'public-test-key' });
+      assert.equal(options.credentials, 'omit');
+      assert.equal(options.cache, 'no-store');
+      assert.equal(options.signal, controller.signal);
+      return new Response(JSON.stringify({ external: { google: true } }));
+    },
+  });
+  assert.equal(available, true);
+  assert.equal(calls, 1);
+});
+
+test('unconfigured providers and settings failures keep Google unavailable without breaking email', async () => {
+  for (const payload of [{}, { external: {} }, { external: { google: false } }, { external: { google: 'true' } }, null]) {
+    assert.equal(await googleSignInAvailable('https://auth-test.invalid', 'public-test-key', {
+      fetch: async () => new Response(JSON.stringify(payload)),
+    }), false);
+  }
+  for (const request of [
+    async () => new Response('{}', { status: 500 }),
+    async () => new Response('not json'),
+    async () => { throw new Error('offline'); },
+  ]) assert.equal(await googleSignInAvailable('https://auth-test.invalid', 'public-test-key', { fetch: request }), false);
+  assert.equal(await googleSignInAvailable('', ''), false);
+});
+
+test('cancelled and expired Google callbacks return to sign-in rather than requesting email verification', () => {
+  for (const query of ['?auth=google#error=access_denied&error_description=private', '?auth=google&code=expired', '?auth=google']) {
+    const failure = authCallbackFailure(new URL('https://www.interoom.org/' + query), null, null);
+    assert.equal(failure.mode, 'login');
+    assert.match(failure.message, /Google sign-in wasn’t completed/);
+    assert.equal(failure.message.includes('private'), false);
+  }
+  assert.equal(authCallbackFailure(new URL('https://www.interoom.org/?auth=google&code=valid'), null, { user: { id: 'existing-user' } }), null);
+  assert.equal(authCallbackFailure(new URL('https://www.interoom.org/?auth=google#error=access_denied'), null, { user: {} }).mode, 'login');
+  assert.equal(cleanAuthCallbackUrl(new URL('https://www.interoom.org/?auth=google&code=secret&view=messages&conversation=thread#provider_token=secret')), '/?view=messages&conversation=thread');
+});
+
+test('an expired callback cannot look successful just because an older session is still valid', async () => {
+  const session = { user: { id: 'existing-user' } };
+  const callbackError = { code: 'flow_state_expired' };
+  const result = await initialAuthSession({
+    initialize: async () => ({ error: callbackError }),
+    getSession: async () => ({ data: { session }, error: null }),
+  });
+  assert.equal(result.data.session, session, 'the existing account stays signed in');
+  assert.equal(result.error, callbackError);
+  assert.equal(authCallbackFailure(new URL('https://www.interoom.org/?auth=google&code=expired'), result.error, result.data.session).mode, 'login');
+  assert.equal(authCallbackFailure(new URL('https://www.interoom.org/?reset=1&code=expired'), result.error, result.data.session).mode, 'reset');
 });

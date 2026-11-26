@@ -24,6 +24,10 @@ export function authErrorMessage(error, action = 'login') {
     refresh_token_already_used: 'Your session has expired. Please sign in again.',
     signup_disabled: 'New registrations are temporarily unavailable. Please try again later.',
     email_provider_disabled: 'Email sign-in is temporarily unavailable. Please try again later.',
+    provider_disabled: 'Google sign-in is temporarily unavailable. Please use email or try again later.',
+    oauth_provider_not_supported: 'Google sign-in is temporarily unavailable. Please use email or try again later.',
+    oauth_redirect_failed: 'Couldn’t start Google sign-in. Please try again or use email.',
+    conflict: 'Another sign-in request is already running. Please wait, then try again.',
     email_address_not_authorized: 'We couldn’t send an email to this address right now. Please try again later.',
     captcha_failed: 'The security check failed. Please try again.',
     request_timeout: 'The request timed out. Check your connection before trying again.',
@@ -41,6 +45,7 @@ export function authErrorMessage(error, action = 'login') {
   if (action === 'profile') return 'Couldn’t save your profile. Please try again.';
   if (['signup', 'reset', 'verify'].includes(action)) return 'Couldn’t complete the email request. Please try again later.';
   if (action === 'password') return 'Couldn’t update your password. Request a new reset link and try again.';
+  if (action === 'google') return 'Couldn’t continue with Google. Please try again or use email.';
   return 'Couldn’t sign in right now. Please try again.';
 }
 
@@ -99,14 +104,56 @@ export function sendAuthEmail(auth, mode, { email, password, profile, origin }, 
   throw new Error('Unsupported email action');
 }
 
+// Public Auth settings contain provider availability, never client secrets.
+// Keep the button hidden until the server's Google provider is configured.
+export async function googleSignInAvailable(projectUrl, publishableKey, { fetch: request = globalThis.fetch, signal } = {}) {
+  if (!projectUrl || !publishableKey) return false;
+  try {
+    const result = await request(new URL('/auth/v1/settings', projectUrl), {
+      headers: { apikey: publishableKey }, credentials: 'omit', cache: 'no-store', signal,
+    });
+    if (!result.ok) return false;
+    return (await result.json())?.external?.google === true;
+  } catch { return false; }
+}
+
+export async function googleSignInUrl(auth, origin) {
+  const redirect = new URL('/', origin);
+  redirect.searchParams.set('auth', 'google');
+  const { data, error } = await auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: redirect.href, scopes: 'openid email profile',
+      queryParams: { prompt: 'select_account' }, skipBrowserRedirect: true,
+    },
+  });
+  if (error) throw error;
+  if (!data?.url) throw { code: 'oauth_redirect_failed' };
+  return data.url;
+}
+
+// getSession() can recover an older valid session after a failed callback.
+// Retain the initialization error so an expired/new sign-in attempt isn't
+// mistaken for a successful one, without signing the existing account out.
+export async function initialAuthSession(auth) {
+  const initialized = await auth.initialize();
+  const result = await auth.getSession();
+  return { ...result, error: initialized.error || result.error };
+}
+
 export function authCallbackFailure(url, error, session) {
   const query = url.searchParams;
   const hash = new URLSearchParams(url.hash.slice(1));
   const hasError = ['error', 'error_code', 'error_description'].some(key => query.has(key) || hash.has(key));
   const recovery = query.get('reset') === '1' || hash.get('type') === 'recovery';
-  const callback = recovery || query.has('code') || hash.has('access_token') || hasError;
+  const google = query.get('auth') === 'google';
+  const callback = google || recovery || query.has('code') || hash.has('access_token') || hasError;
   if (!error && !hasError && !(callback && !session)) return null;
   if (!callback) return { mode: 'login', message: authErrorMessage(error) };
+  if (google && !recovery) return {
+    mode: 'login',
+    message: 'Google sign-in wasn’t completed. Try “Continue with Google” again in this browser, or sign in with email.',
+  };
   return {
     mode: recovery ? 'reset' : 'verify',
     message: recovery
@@ -117,7 +164,7 @@ export function authCallbackFailure(url, error, session) {
 
 export function cleanAuthCallbackUrl(url) {
   const clean = new URL(url);
-  ['code', 'error', 'error_code', 'error_description', 'reset', 'sb_flow_id'].forEach(key => clean.searchParams.delete(key));
+  ['code', 'error', 'error_code', 'error_description', 'reset', 'sb_flow_id', 'auth'].forEach(key => clean.searchParams.delete(key));
   clean.hash = '';
   return clean.pathname + clean.search;
 }

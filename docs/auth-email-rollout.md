@@ -2,9 +2,11 @@
 
 ## Status
 
-Prepared against the existing Interoom repository and Supabase project. No database migrations, account changes, or production deployment are part of this preparation.
+Prepared against the existing Interoom repository and Supabase project. This change does not require database migrations or account rewrites. Authentication changes remain in draft PR #4 until the configuration and live checks below are complete.
 
-On 19 November 2026, production Auth logs contained 22 HTTP 429 responses with `over_email_send_rate_limit` in the preceding 24 hours. Custom SMTP was disabled in the dashboard. Resend sign-in, sending-domain verification, and SMTP credentials are still required. The frontend changes do not by themselves remove Supabase's email sending quota.
+On 25 November 2026, production Auth logs still showed HTTP 429 responses with `over_email_send_rate_limit`, and custom SMTP remained disabled. The Resend sending domain `auth.interoom.org` was pending DNS verification. No SMTP key has been created or installed. The frontend changes do not by themselves remove Supabase's email sending quota.
+
+The Google sign-in implementation is prepared, but Supabase's Google provider remains disabled. The button appears only when the public Auth settings confirm that the provider is enabled. Google Cloud client configuration and live OAuth verification are still required.
 
 ## Integration
 
@@ -18,7 +20,7 @@ Configure the existing project's **Authentication → Emails → SMTP Settings**
 | --- | --- |
 | Custom SMTP | Enabled only once the domain and credentials are ready |
 | Sender name | Interoom |
-| Sender email | A verified Interoom sender, e.g. `hello@interoom.org` if that domain is verified |
+| Sender email | `noreply@auth.interoom.org`, after that sending domain is verified |
 | Host | `smtp.resend.com` |
 | Port | `465` |
 | Username | `resend` |
@@ -40,9 +42,19 @@ The application preserves the initiating origin and uses `/?reset=1` for passwor
 
 Keep confirmation/recovery templates using Supabase's confirmation URL, including its token and callback handling. PKCE email links must be opened in the browser that requested them. Switching from Supabase's mail transport to Resend does not require replacing existing users or tokens.
 
+## Google sign-in configuration
+
+Create a Google OAuth **Web application** client for Interoom. Use `https://www.interoom.org` as an authorized JavaScript origin. Copy the exact callback URL from the existing Supabase project's Google provider settings into Google's authorized redirect URIs. The callback is the Supabase Auth `/auth/v1/callback` endpoint, not the website's homepage.
+
+Store the client ID and client secret only in **Supabase Authentication → Sign In / Providers → Google**, then enable that provider. Never put the client secret in a `VITE_*` variable or source file. Configure the Google consent screen for the intended audience and publish it when ready for all users; a client restricted to test users is not a public rollout.
+
+Add the exact application callback `https://www.interoom.org/?auth=google` to Supabase's redirect allowlist, along with the selected trusted preview origin's equivalent during testing. The application requests only `openid email profile`, uses PKCE, and prompts for account selection. It does not request mailbox or offline access. Existing identities remain managed by Supabase; do not manually merge or replace accounts.
+
+Test new Google sign-in, returning sign-in, cancellation and callback expiry on the candidate preview. Verify that a member can finish their Interoom profile after Google sign-in and that existing email accounts and their content remain available. A failed callback must show a retry message even if an older valid session exists.
+
 ## Verification and release gate
 
-Automated tests (`npm test`) use the installed Supabase SDK with a fake HTTP transport, so they send no real email and modify no production data. They cover request parameters and PKCE challenges for signup/reset/resend, HTTP 429 propagation, concurrent/repeated submission suppression, cooldown persistence, safe error text, and callback cleanup. `npm run build` checks the production bundle. Browser smoke checks cover form navigation and failed links.
+Automated tests (`npm test`) use the installed Supabase SDK with a fake HTTP transport, so they send no real email and modify no production data. They cover request parameters and PKCE challenges for signup/reset/resend and Google OAuth, HTTP 429 propagation, concurrent/repeated submission suppression, cooldown persistence, safe error text, provider availability, failed initialization with an existing session, and callback cleanup. All 67 tests and the production build passed on 25 November 2026. Browser smoke checks covered auth form navigation and the Google button remaining hidden while the provider is disabled; real delivery and OAuth callbacks remain unverified.
 
 Before production deployment, complete these checks with a designated test inbox/account:
 
@@ -64,3 +76,5 @@ If SMTP delivery fails, restore the previous email settings using the dashboard,
 - [Resend SMTP with Supabase](https://resend.com/docs/send-with-supabase-smtp)
 - [Supabase Auth rate limits](https://supabase.com/docs/guides/auth/rate-limits)
 - [Supabase Auth errors](https://supabase.com/docs/guides/auth/debugging/error-codes)
+- [Supabase Google sign-in](https://supabase.com/docs/guides/auth/social-sign-in/auth-google)
+- [Google sign-in branding](https://developers.google.com/identity/branding-guidelines)

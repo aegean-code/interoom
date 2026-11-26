@@ -249,6 +249,30 @@ dialog::backdrop { background: #29242c66; }
 .role-confirm { border-top: 1px solid var(--line); padding-top: 16px; }
 .role-confirm button { margin-right: 20px; }
 .role-status { color: #36563c; }
+.member-count { font-size: 14px; font-weight: 600; margin: 24px 0 14px; }
+.member-count>span { color: var(--muted); font-size: 12px; font-weight: 400; }
+.admin-users-scroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); }
+.admin-users { width: 100%; min-width: 720px; border-collapse: collapse; text-align: left; font-size: 12px; }
+.admin-users th, .admin-users td { padding: 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.admin-users thead { background: #eeeee5; color: #526149; font-size: 11px; }
+.admin-users tbody tr:last-child>* { border-bottom: 0; }
+.admin-users tbody th { max-width: 300px; font-weight: 400; overflow-wrap: anywhere; }
+.admin-users tbody th strong { display: block; font-size: 13px; }
+.admin-users td { max-width: 220px; overflow-wrap: anywhere; }
+.admin-users small, .member-email, .member-school { display: block; margin-top: 5px; color: #676e60; line-height: 1.6; font-size: 11px; }
+.member-school { margin: 0 0 8px; }
+.member-status { display: inline-block; color: #805a24; background: #f6edda; padding: 4px 7px; border-radius: 3px; white-space: nowrap; font-size: 10px; }
+.member-status.verified { color: #36563c; background: #edf0e5; }
+.member-admin { display: inline-block; color: #36563c; font-size: 10px; margin-top: 6px; font-weight: 600; }
+.selected-member { margin-top: 28px; }
+.selected-member h2 { font-size: 16px; font-weight: 500; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.google-sign-in { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 44px; width: 100%; padding: 10px 16px; border: 1px solid #747775; border-radius: 4px; background: #fff; color: #1f1f1f; font-size: 14px; font-weight: 500; }
+.google-sign-in img { flex: 0 0 20px; width: 20px; height: 20px; object-fit: contain; }
+.google-sign-in:hover:not(:disabled) { background: #f8faff; }
+.google-sign-in:focus-visible { outline: 3px solid #a8c7fa; outline-offset: 2px; }
+.auth-divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 @media (max-width:650px) {
  .ambassador-list, .member-appointment { grid-template-columns: 1fr; }
  .member-search { flex-wrap: wrap; }
