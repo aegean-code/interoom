@@ -2,13 +2,13 @@
 
 ## Status
 
-Prepared against the existing Interoom repository and Supabase project. This change does not require database migrations or account rewrites. Authentication changes remain in draft PR #4 until the configuration and live checks below are complete.
+Prepared against the existing Interoom repository and Supabase project. This change does not require database migrations or account rewrites. Google sign-in and the authentication UI can be released independently of the still-pending SMTP transport change.
 
 On 25 November 2026, production Auth logs still showed HTTP 429 responses with `over_email_send_rate_limit`, and custom SMTP remained disabled. The Resend sending domain `auth.interoom.org` was pending DNS verification. No SMTP key has been created or installed. The frontend changes do not by themselves remove Supabase's email sending quota.
 
 On 26 November 2026, Resend reported that all three required DNS records were missing and verification had failed. Registrar sign-in had not completed, so the DNS records remain unchanged. Add the current records shown by Resend, then restart verification; retrying verification before the records exist will not fix delivery.
 
-The Google sign-in implementation is prepared, but Supabase's Google provider remains disabled. The button appears only when the public Auth settings confirm that the provider is enabled. Google Cloud client configuration and live OAuth verification are still required.
+On 26 November 2026, the owner configured Google's OAuth credentials in Supabase and the public Auth settings confirmed Google enabled. The exact production callback `https://www.interoom.org/?auth=google` is allowlisted. The new sign-in screen offers Google or email, with existing email login, registration and recovery behind the email choice. Live Google sign-in and session persistence still need verification after deployment; provider availability alone is not proof of a working OAuth exchange.
 
 ## Integration
 
@@ -56,9 +56,9 @@ Test new Google sign-in, returning sign-in, cancellation and callback expiry on 
 
 ## Verification and release gate
 
-Automated tests (`npm test`) use the installed Supabase SDK with a fake HTTP transport, so they send no real email and modify no production data. They cover request parameters and PKCE challenges for signup/reset/resend and Google OAuth, HTTP 429 propagation, concurrent/repeated submission suppression, cooldown persistence, safe error text, provider availability, failed initialization with an existing session, and callback cleanup. All 67 tests and the production build passed on 25 November 2026. Browser smoke checks covered auth form navigation and the Google button remaining hidden while the provider is disabled; real delivery and OAuth callbacks remain unverified.
+Automated tests (`npm test`) use the installed Supabase SDK with a fake HTTP transport, so they send no real email and modify no production data. They cover request parameters and PKCE challenges for signup/reset/resend and Google OAuth, HTTP 429 propagation, concurrent/repeated submission suppression, cooldown persistence, safe error text, provider availability, failed initialization with an existing session, and callback cleanup. All 67 tests and the production build passed on 26 November 2026. Browser checks covered Google/email choices, email form and recovery navigation, cancelled Google callback handling, and the 390px mobile layout. Real email delivery and successful OAuth callbacks remain unverified.
 
-Before production deployment, complete these checks with a designated test inbox/account:
+Before declaring the Resend email transport complete, carry out these checks with a designated test inbox/account (they do not block the separate Google/UI release):
 
 1. Confirm the sending domain is verified and the SMTP key is restricted appropriately.
 2. Verify delivery through Resend to the designated test inbox before routing production Auth mail through it.
@@ -68,7 +68,7 @@ Before production deployment, complete these checks with a designated test inbox
 6. Request a password reset for the test account, open the link in the requesting browser, and complete the password change. Verify the old password fails and the new password succeeds. Do not reset a real member's password.
 7. Check an expired/used link and wrong credentials. Test 429s using the fake transport rather than exhausting the production quota.
 8. Review Auth and Resend logs for delivery/429 errors; confirm normal existing-account sign-in still works.
-9. Merge and deploy only after these checks pass. Verify the production deployment and a production auth smoke test. Leave accounts, messages, and database records intact.
+9. Verify the production deployment and a production email-auth smoke test before declaring email delivery fixed. Leave accounts, messages, and database records intact.
 
 If SMTP delivery fails, restore the previous email settings using the dashboard, understanding that the built-in service's restrictions return. Frontend rollback is the previous Vercel deployment. Neither rollback requires a database reset or migration.
 

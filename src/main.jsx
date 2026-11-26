@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Compass, Flag, GraduationCap, Hash, Heart, ShieldCheck,
-  Menu, MessageCircle, Pause, Play, Plus, Search, Send, Trash2, X,
+  Mail, Menu, MessageCircle, Pause, Play, Plus, Search, Send, Trash2, X,
 } from 'lucide-react';
 import {
   addEntry, deleteEntry, getAdminStatus, getMessages, getPosts, getProfile, getReplies,
@@ -120,6 +120,7 @@ function Modal({ title, close, children }) {
 
 function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', initialNotice = '', onSaved, onSignOut }) {
   const [mode, setMode] = useState(initialMode);
+  const [emailSelected, setEmailSelected] = useState(!['login', 'signup'].includes(initialMode));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordAgain, setPasswordAgain] = useState('');
@@ -130,15 +131,16 @@ function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', 
   const [sent, setSent] = useState('');
   const [linkError, setLinkError] = useState(initialNotice);
   const [cooldown, setCooldown] = useState(emailRequests.remainingSeconds);
-  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(null);
   const { run, pending, error, clearError } = useAction();
   useEffect(() => {
     if (userId || recovery || !supabase) return;
+    let active = true;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
     googleSignInAvailable(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, { signal: controller.signal })
-      .then(enabled => { if (!controller.signal.aborted) setGoogleEnabled(enabled); });
-    return () => { controller.abort(); clearTimeout(timer); };
+      .then(enabled => { if (active) setGoogleEnabled(enabled); clearTimeout(timer); });
+    return () => { active = false; controller.abort(); clearTimeout(timer); };
   }, [userId, recovery]);
   useEffect(() => {
     const timer = setInterval(() => setCooldown(emailRequests.remainingSeconds()), 1000);
@@ -185,15 +187,30 @@ function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', 
       } finally { setCooldown(emailRequests.remainingSeconds()); }
     }, cause => authErrorMessage(cause, recovery ? 'password' : userId ? 'profile' : mode));
   }
+  if (!userId && !recovery && !emailSelected) return <div className="dialog-form auth-form auth-choice" aria-busy={pending}>
+    <div className="auth-welcome">
+      <span className="auth-globe-stamp" aria-hidden="true"><img src="/favicon.svg" width="72" height="72" alt="" /></span>
+      <span className="auth-eyebrow">A world of shared experiences</span>
+      <h3>Make yourself at home.</h3>
+      <p>Meet people who know what it’s like to start somewhere new.</p>
+    </div>
+    {googleEnabled !== false && <button type="button" className="google-sign-in" disabled={pending || !googleEnabled} onClick={continueWithGoogle}>
+      <img src="/google-g.png" width="20" height="20" alt="" /><span>{pending ? 'Opening Google…' : 'Continue with Google'}</span>
+    </button>}
+    {googleEnabled === false ? <p role="status">Google sign-in is temporarily unavailable. You can continue with email.</p> : <div className="auth-divider"><span>or</span></div>}
+    <button type="button" className="primary auth-email-choice" disabled={pending} onClick={() => { setEmailSelected(true); clearError(); setLinkError(''); }}>
+      <Mail size={19} aria-hidden="true" /> Continue with email <ArrowRight size={17} aria-hidden="true" />
+    </button>
+    {linkError && <p className="error" role="alert">{linkError}</p>}
+    {error && <p className="error" role="alert">{error}</p>}
+    <p className="auth-choice-footer">{mode === 'signup' ? 'Already part of Interoom?' : 'New to Interoom?'}{' '}
+      <button type="button" className="text-button" disabled={pending} onClick={() => { changeMode(mode === 'signup' ? 'login' : 'signup'); setEmailSelected(true); }}>{mode === 'signup' ? 'Sign in' : 'Create an account'}</button>
+    </p>
+  </div>;
   return <form className="dialog-form auth-form" onSubmit={submit} aria-busy={pending}>
+    {!userId && !recovery && <button type="button" className="text-button auth-back" disabled={pending} onClick={() => { setEmailSelected(false); setPassword(''); setPasswordAgain(''); setSent(''); clearError(); setLinkError(''); setMode('login'); }}><ArrowLeft size={15} aria-hidden="true" /> All sign-in options</button>}
     {!userId && !recovery && <div className="view-switch">{[['login', 'Sign in'], ['signup', 'Create account']].map(([value, label]) =>
       <button key={value} type="button" disabled={pending} aria-pressed={mode === value} onClick={() => changeMode(value)}>{label}</button>)}</div>}
-    {!userId && !recovery && googleEnabled && ['login', 'signup'].includes(mode) && <>
-      <button type="button" className="google-sign-in" disabled={pending} onClick={continueWithGoogle}>
-        <img src="/google-g.png" width="20" height="20" alt="" /><span>Continue with Google</span>
-      </button>
-      <div className="auth-divider"><span>or use email</span></div>
-    </>}
     {sent && <p role="status">{sent}</p>}
     {linkError && <p className="error" role="alert">{linkError}</p>}
     {!userId && mode === 'reset' && <p>Enter the email you used to register. We’ll send you a link to choose a new password.</p>}

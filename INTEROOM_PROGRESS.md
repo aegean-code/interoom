@@ -61,7 +61,7 @@ Validation: all 48 automated tests pass, including permission, deduplication, me
 
 Not yet included: friend-request/acceptance notifications depend on Priority 4; followed-community preferences depend on Priority 8. Current rooms use navigation counters. Profile images still use initials until profile uploads exist. Hosted two-account Realtime verification is an outstanding optional check, not a release gate.
 
-## Priority 3 — authentication prepared, configuration pending
+## Priority 3 — Google configured, release verification pending
 
 Draft PR #4 (`fix/auth-email-delivery`) has been brought up to date with the deployed messaging and notification changes.
 
@@ -76,6 +76,8 @@ Validation: all 67 automated tests and the production build passed on 2026-11-25
 Remaining release gates: verify the Resend sending domain, create a domain-restricted sending credential, configure Supabase SMTP and confirm real verification/reset delivery. Configure the Google OAuth client, provider and exact callback allowlist, then validate a real Google sign-in. Dashboard access and credential setup are still pending; the frontend alone does not fix the production email quota. See `docs/auth-email-rollout.md` for setup and release checks.
 
 2026-11-26 setup check: Resend reports that all required DNS records are missing. Registrar sign-in still needs to complete before those records can be added. No sending credential has been created and no production authentication settings have been changed. Code and validation are saved in PR #4; production remains on the existing release.
+
+Later on 2026-11-26, the owner configured Google OAuth in Supabase; the public settings now report Google enabled. The exact production Google return URL is allowlisted. The sign-in screen now offers Continue with Google or Continue with email, using Interoom's existing globe, cream, forest green and terracotta styling. All 67 automated tests and the build pass; desktop, 390px mobile, email navigation and cancelled Google callback checks passed. This Google/UI release proceeds separately from the unconfigured Resend transport. Production Google login and refresh persistence remain pending the release test.
 
 Files: `src/auth.js`, `src/main.jsx`, `src/style.css`, `public/google-g.png`, `tests/auth.test.js`, and the rollout guide. No new migration is required.
 
