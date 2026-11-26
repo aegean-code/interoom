@@ -4,7 +4,11 @@ International student discussions and room chat. React + Vite, Supabase Auth/Pos
 
 ## Development
 
-Use Node 22 or newer. Run `npm ci`, copy `.env.example` to `.env.local`, set the Supabase URL and publishable key, then `npm run dev`. Never put a service-role or secret key in a VITE variable. `npm test` covers routing, the posts query, and the admin directory's PostgreSQL permissions and pagination; `npm run build` creates the production bundle. Database tests use disposable local PGlite instances and never write to the production project.
+Use Node 22 or newer. Run `npm ci`, copy `.env.example` to `.env.local`, set the Supabase URL and publishable key, then `npm run dev`. Never put a service-role or secret key in a VITE variable. `npm test` covers authentication, routing, posts, admin permissions, private messages and notifications; `npm run build` creates the production bundle. Database tests use disposable local PGlite instances and never write to production. Auth tests use a mocked transport and send no email.
+
+## Authentication email delivery
+
+Verification, verification resends, and password recovery go through Supabase Auth. Resend is its intended custom SMTP provider; its API key belongs only in Supabase's SMTP settings. See [the email rollout guide](docs/auth-email-rollout.md) for setup and delivery verification. The UI distinguishes rate limits, wrong credentials, unconfirmed addresses, weak passwords, and unavailable services. Email requests have a shared 60-second browser pause; Supabase enforces actual limits.
 
 ## Database
 
