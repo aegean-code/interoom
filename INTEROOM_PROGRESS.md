@@ -75,6 +75,8 @@ Validation: all 67 automated tests and the production build passed on 2026-11-25
 
 Remaining release gates: verify the Resend sending domain, create a domain-restricted sending credential, configure Supabase SMTP and confirm real verification/reset delivery. Configure the Google OAuth client, provider and exact callback allowlist, then validate a real Google sign-in. Dashboard access and credential setup are still pending; the frontend alone does not fix the production email quota. See `docs/auth-email-rollout.md` for setup and release checks.
 
+2026-11-26 setup check: Resend reports that all required DNS records are missing. Registrar sign-in still needs to complete before those records can be added. No sending credential has been created and no production authentication settings have been changed. Code and validation are saved in PR #4; production remains on the existing release.
+
 Files: `src/auth.js`, `src/main.jsx`, `src/style.css`, `public/google-g.png`, `tests/auth.test.js`, and the rollout guide. No new migration is required.
 
 ## Next priorities

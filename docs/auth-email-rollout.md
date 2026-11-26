@@ -6,6 +6,8 @@ Prepared against the existing Interoom repository and Supabase project. This cha
 
 On 25 November 2026, production Auth logs still showed HTTP 429 responses with `over_email_send_rate_limit`, and custom SMTP remained disabled. The Resend sending domain `auth.interoom.org` was pending DNS verification. No SMTP key has been created or installed. The frontend changes do not by themselves remove Supabase's email sending quota.
 
+On 26 November 2026, Resend reported that all three required DNS records were missing and verification had failed. Registrar sign-in had not completed, so the DNS records remain unchanged. Add the current records shown by Resend, then restart verification; retrying verification before the records exist will not fix delivery.
+
 The Google sign-in implementation is prepared, but Supabase's Google provider remains disabled. The button appears only when the public Auth settings confirm that the provider is enabled. Google Cloud client configuration and live OAuth verification are still required.
 
 ## Integration
