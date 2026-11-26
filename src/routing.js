@@ -17,7 +17,7 @@ export function currentRoute(location) {
   const query = new URLSearchParams(location.search);
   const requestedRoom = query.get('room');
   if (query.get('view') === 'messages') return { roomId: null, view: 'messages', conversationId: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query.get('conversation') || '') ? query.get('conversation') : null };
-  if (['ambassadors', 'admin'].includes(query.get('view'))) return { roomId: null, view: query.get('view') };
+  if (['ambassadors', 'admin', 'members'].includes(query.get('view'))) return { roomId: null, view: query.get('view') };
   return {
     roomId: room || (Object.hasOwn(roomById, requestedRoom) ? requestedRoom : null),
     view: query.get('view') === 'chat' || (room && !query.has('view')) ? 'chat' : 'posts',
@@ -26,7 +26,7 @@ export function currentRoute(location) {
 }
 export function roomUrl(roomId, view, location, subdomainsEnabled, conversationId = null, postId = null) {
   const params = new URLSearchParams();
-  if (['chat', 'ambassadors', 'admin', 'messages'].includes(view)) params.set('view', view);
+  if (['chat', 'ambassadors', 'admin', 'messages', 'members'].includes(view)) params.set('view', view);
   if (view === 'messages' && conversationId) params.set('conversation', conversationId);
   if (view === 'posts' && postId) { params.set('view', 'posts'); params.set('post', postId); }
   const production = isInteroomHost(location.hostname) && subdomainsEnabled;

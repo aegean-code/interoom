@@ -1,0 +1,40 @@
+.member-page-heading { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
+.member-page-heading>.account { flex-shrink: 0; }
+.members-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 24px; }
+.members-toolbar .view-switch button { display: inline-flex; align-items: center; gap: 6px; }
+.member-count { font-size: 11px; color: var(--muted); }
+.member-search-form { display: flex; flex: 1; min-width: 230px; max-width: 380px; margin-left: auto; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); }
+.member-search-form input { width: 100%; min-width: 0; background: none; border: 0; padding: 12px; color: inherit; font-size: 14px; }
+.member-search-form .icon-button { margin-right: 4px; }
+.member-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
+.member-card { display: flex; flex-direction: column; min-width: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 7px; padding: 23px; }
+.member-card header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.member-card header>div { min-width: 0; }
+.member-card h2 { font-size: 17px; margin: 0 0 4px; overflow-wrap: anywhere; }
+.member-card small { color: var(--muted); font-size: 12px; }
+.member-friend-label { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; color: #466d4b; font-size: 11px; }
+.member-location { display: flex; align-items: start; gap: 6px; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.member-location svg { flex-shrink: 0; margin-top: 3px; }
+.member-bio { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.75; }
+.member-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 15px; padding: 0; list-style: none; }
+.member-tags li { color: #79533c; background: var(--accent-soft); border-radius: 3px; padding: 5px 8px; font-size: 11px; overflow-wrap: anywhere; }
+.member-languages { color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.member-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 17px; margin-top: auto; border-top: 1px solid var(--line); }
+.member-card-actions .primary, .member-card-actions .account { min-height: 40px; }
+.member-card-actions .text-button { font-size: 12px; }
+.member-remove { margin-left: auto; }
+.member-pending { color: var(--muted); font-size: 12px; }
+.member-empty { text-align: center; padding: 55px 20px; color: var(--muted); }
+.member-empty h2 { font-family: Georgia,serif; font-weight: 400; font-size: 26px; color: #263b32; margin: 17px 0 10px; }
+.member-empty p { font-size: 14px; line-height: 1.7; }
+.member-request-banner { width: 100%; display: flex; gap: 12px; align-items: center; text-align: left; border: 1px solid #c8d1bf; border-radius: 5px; padding: 15px; background: #edf0e5; color: #263b32; margin: 0 0 24px; font-size: 13px; }
+.member-request-banner span:last-child { margin-left: auto; font-weight: 600; }
+.member-profile-form { background: var(--paper); border: 1px solid var(--line); border-radius: 7px; max-width: 640px; padding: 25px; margin: 0 0 30px; }
+.member-section-title { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.member-section-title h2 { font-size: 20px; margin: 0; font-weight: 500; }
+.member-profile-form small { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.member-profile-form label.member-setting { display: flex; gap: 10px; align-items: start; }
+.member-profile-form .member-setting input { width: 16px; height: 16px; margin: 1px 0 0; accent-color: var(--accent); flex-shrink: 0; }
+.member-setting small { display: block; margin-top: 5px; }
+.member-pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 26px; font-size: 12px; }
+@media(max-width:700px) { .member-grid { grid-template-columns: 1fr; } .member-page-heading { flex-wrap: wrap; margin-bottom: 24px; gap: 0; } .member-search-form { max-width: none; margin: 0; } .member-profile-form { padding: 18px; } .member-profile-form input,.member-profile-form textarea { font-size: 16px; } .member-request-banner { flex-wrap: wrap; } }

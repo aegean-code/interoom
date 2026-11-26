@@ -61,7 +61,7 @@ Validation: all 48 automated tests pass, including permission, deduplication, me
 
 Not yet included: friend-request/acceptance notifications depend on Priority 4; followed-community preferences depend on Priority 8. Current rooms use navigation counters. Profile images still use initials until profile uploads exist. Hosted two-account Realtime verification is an outstanding optional check, not a release gate.
 
-## Priority 3 — Google configured, release verification pending
+## Priority 3 — Google sign-in deployed and verified; SMTP pending
 
 Draft PR #4 (`fix/auth-email-delivery`) has been brought up to date with the deployed messaging and notification changes.
 
@@ -81,10 +81,22 @@ Later on 2026-11-26, the owner configured Google OAuth in Supabase; the public s
 
 Files: `src/auth.js`, `src/main.jsx`, `src/style.css`, `public/google-g.png`, `tests/auth.test.js`, and the rollout guide. No new migration is required.
 
+Production verification: PR #4 merged as `f1725ac` and Vercel completed the production deployment. The live Google OAuth flow authenticated the owner's existing account, retained its profile and admin access, returned to the clean homepage, and persisted after refresh. No existing accounts or content were replaced. The Google/email chooser passed desktop and mobile checks. Resend DNS/SMTP delivery remains a separate unfinished task.
+
+## Priority 4 — friends and profile details tested; release in progress
+
+Implemented on `feat/friends-profiles`: a searchable Members page, Discover/Friends/Requests tabs, send/accept/decline/cancel/remove controls, friend-request and acceptance notifications, editable bios/interests/languages, discovery and request preferences, and entry into existing private messaging. Styling follows the current cream, green and terracotta palette. Existing names, schools, accounts, messages and records remain intact.
+
+The additive `20261126000000_friends_profiles.sql` migration uses verified-member RPCs and participant-only RLS. Only the recipient can accept a request; crossed requests never auto-accept. Blocking hides peers and ends pending/accepted friendships. Limits are 10 new requests/hour and 50/day, with a seven-day retry cooldown; cancelling cannot clear the rate log. Profile data is shared only through the member directory, with owner-only raw profile details. No email addresses are returned.
+
+Validation: all 76 automated tests pass, covering existing features plus permissions, lifecycle, privacy, rate limits, blocks, notification deduplication, pagination and message preferences. The production build and whitespace checks pass; the existing bundle-size warning remains. Isolated browser tests use real SQL and the actual React components: request/notification, acceptance/notification, refresh persistence, profile edits, interest search and opening a message conversation all passed. A 390px frame passed with no horizontal overflow. No production test requests or messages were sent. Hosted two-account Realtime verification remains optional, as previously agreed.
+
+Files: `src/members*`, navigation/routing and notification integration, the new migration, `tests/members.test.js`, and the isolated members browser harness. Profile image uploads remain future work. Production migration and deployment checks are the remaining release steps.
+
 ## Next priorities
 
-3. Authentication verification, Resend completion and Google sign-in preparation.
-4. Friends and richer profiles/discovery.
+3. Resend DNS/SMTP completion and real verification/reset email delivery (Google sign-in is live and verified).
+4. Finish this friends/profile release; profile image uploads remain a follow-up.
 5. Student verification and moderation.
 6. Navy/blue visual refresh while preserving globe branding.
 7. Aggregated admin analytics.
