@@ -2,6 +2,7 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
+import { storageFixture } from './helpers/storage.js';
 
 const db = new PGlite();
 const id = n => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -25,6 +26,7 @@ before(async () => {
       created_at timestamptz default now(),deleted_at timestamptz,is_anonymous boolean default false);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     create publication supabase_realtime;`);
+  await db.exec(storageFixture);
   const migrations = new URL('../supabase/migrations/', import.meta.url);
   for (const file of (await readdir(migrations)).filter(x => x.endsWith('.sql')).sort()) {
     await db.exec(await readFile(new URL(file, migrations), 'utf8'));
@@ -124,7 +126,7 @@ test('privacy preferences prevent new conversations and search exposes no emails
   await denied(() => rpc(1,'select public.dm_start_conversation($1) as value',[id(3)]));
   const search=await rpc(1,'select public.dm_search_members($1) as value',['@local_2']);
   assert.equal(search[0].id,id(2));
-  assert.deepEqual(Object.keys(search[0]).sort(),['id','name','username']);
+  assert.deepEqual(Object.keys(search[0]).sort(),['avatar_path','id','name','username']);
   assert.equal((await rpc(1,'select public.dm_search_members($1) as value',['local_3'])).length,0);
 });
 

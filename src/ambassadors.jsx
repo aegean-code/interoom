@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { GraduationCap, Search, ShieldCheck } from 'lucide-react';
+import { Avatar } from './avatar';
 import { getAdminMembers, getAmbassadors, setAmbassador } from './community';
 
 export function AmbassadorBadge({ appointment }) {
@@ -27,7 +28,7 @@ export function AmbassadorDirectory({ member, signIn }) {
       {result.loading && <p className="state" role="status">Loading ambassadors…</p>}
       {result.error && <p className="state" role="alert">Couldn’t load ambassadors. <button className="text-button" onClick={() => setRetry(v => v + 1)}>Try again</button></p>}
       {result.items?.length === 0 && <div className="signin-state"><h3>{search ? 'No schools matched.' : 'The first ambassadors are on their way.'}</h3><p>{search ? 'Try a different school name.' : 'Once an admin appoints an ambassador, you’ll find their school and display name here.'}</p></div>}
-      <div className="ambassador-list">{result.items?.map(person => <article className="ambassador-card" key={person.user_id}><GraduationCap size={25} aria-hidden="true" /><div><h2>{person.school}</h2><strong>{person.profile?.name || 'Member'}</strong>{person.profile?.country && <p>{person.profile.country}</p>}<span className="ambassador-badge">School ambassador</span></div></article>)}</div>
+      <div className="ambassador-list">{result.items?.map(person => <article className="ambassador-card" key={person.user_id}><Avatar name={person.profile?.name} userId={person.user_id} path={person.profile?.avatar_path} className="dm-avatar" /><div><h2>{person.school}</h2><strong>{person.profile?.name || 'Member'}</strong>{person.profile?.country && <p>{person.profile.country}</p>}<span className="ambassador-badge">School ambassador</span></div></article>)}</div>
       <div className="pagination">{page > 0 && <button className="text-button" disabled={result.loading} onClick={() => setPage(v => v - 1)}>Previous</button>}{(page > 0 || result.items?.length === 40) && <span>Page {page + 1}</span>}{result.items?.length === 40 && <button className="text-button" onClick={() => setPage(v => v + 1)}>Next</button>}</div>
     </>}
     <p className="ambassador-note">An Interoom ambassador is a student representative within this community, not an official endorsement by their school.</p>

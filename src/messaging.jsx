@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { ArrowLeft, Check, CheckCheck, Flag, MessageCircle, Plus, Search, Send, Settings, Shield, Trash2, X } from 'lucide-react';
 import { supabase } from './community';
 import { createMessagingApi, mergeMessages, messagingError } from './messaging-api';
+import { Avatar } from './avatar';
 import './messaging.css';
 
 export const messagingApi = createMessagingApi(supabase);
@@ -13,8 +14,7 @@ export function UnreadBadge({ count, label = 'unread messages' }) {
 }
 
 function MemberAvatar({ person }) {
-  const initials = (person?.name || 'Member').trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('');
-  return <span className="dm-avatar" aria-hidden="true">{initials}</span>;
+  return <Avatar name={person?.name} userId={person?.peer_id || person?.id} path={person?.avatar_path} className="dm-avatar" />;
 }
 
 export function useMessaging(userId, api = messagingApi) {

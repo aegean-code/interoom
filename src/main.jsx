@@ -15,6 +15,7 @@ import { authCallbackFailure, authErrorMessage, cleanAuthCallbackUrl, emailReque
 import { MessagesPage, UnreadBadge, useMessaging } from './messaging';
 import { NotificationBell, useNotifications, useRoomReadMarker } from './notifications';
 import { MembersPage } from './members';
+import { Avatar, AvatarEditor, AvatarProvider } from './avatar';
 import './style.css';
 
 const timestamp = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -66,11 +67,6 @@ function useAction() {
   }
 
   return { pending, error, run, clearError: () => setError('') };
-}
-
-function Avatar({ name }) {
-  const letters = (name || 'Member').split(/\s+/).slice(0, 2).map(word => word[0]).join('');
-  return <span className="avatar" aria-hidden="true">{letters}</span>;
 }
 
 function OrbitalGlobe() {
@@ -219,6 +215,7 @@ function AuthForm({ userId, profile, metadata, recovery, initialMode = 'login', 
     {!userId && !recovery && <label>Email<input type="email" required disabled={pending} autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setSent(''); clearError(); }} /></label>}
     {(recovery || (!userId && ['login', 'signup'].includes(mode))) && <label>{recovery ? 'New password' : 'Password'}<input type="password" required disabled={pending} minLength={mode === 'login' && !recovery ? 1 : 8} autoComplete={mode === 'login' && !recovery ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} /></label>}
     {recovery && <label>Confirm new password<input type="password" required minLength={8} autoComplete="new-password" value={passwordAgain} onChange={e => setPasswordAgain(e.target.value)} /></label>}
+    {userId && profile && !recovery && <AvatarEditor userId={userId} name={profile.name} path={profile.avatar_path} disabled={pending} />}
     {!recovery && (userId || mode === 'signup') && <>
       <label>Display name<input required minLength={2} maxLength={40} autoComplete="nickname" value={name} onChange={e => setName(e.target.value)} /></label>
       {userId && <label>Username (optional)<input minLength={3} maxLength={24} pattern="[a-z][a-z0-9_]{2,23}" placeholder="your_username" autoCapitalize="none" value={username} onChange={e => setUsername(e.target.value.toLowerCase())} /><small>3–24 letters, numbers or underscores. Start with a letter.</small></label>}
@@ -295,7 +292,7 @@ function EntryControls({ entry, table, userId, profile, onDelete, onReport }) {
 function Author({ entry }) {
   return (
     <div className="author">
-      <Avatar name={entry.profile?.name} />
+      <Avatar name={entry.profile?.name} userId={entry.author_id} path={entry.profile?.avatar_path} />
       <div>
         <strong>{entry.profile?.name || 'Member'}</strong>
         <AmbassadorBadge appointment={entry.profile?.ambassadors} />
@@ -573,7 +570,7 @@ function App() {
   const actions = { profile, userId, requireProfile, onReport: setModal };
 
   return (
-    <div className="app">
+    <AvatarProvider key={userId || 'guest'}><div className="app">
       <a className="skip-link" href="#conversations">Skip to conversations</a>
       {mobile && <button className="mobile-backdrop" aria-label="Close navigation" onClick={() => setMobile(false)} />}
       <aside className={`sidebar ${mobile ? 'sidebar-open' : ''}`} aria-label="Community navigation">
@@ -609,7 +606,7 @@ function App() {
           {admin && <span className="admin-label">Admin</span>}
           {member && <button className="icon-button" aria-label={`Messages${inbox.unread_count ? `, ${inbox.unread_count} unread` : ''}`} onClick={() => navigate(null, 'messages')}><MessageCircle size={20} /><UnreadBadge count={inbox.unread_count} /></button>}
           {canMessage && <NotificationBell key={userId} notifications={notifications} onOpen={item => item.kind.startsWith('friend_') ? navigate(null, 'members') : item.kind === 'dm' ? navigate(null, 'messages', item.conversation_id) : navigate(item.room_id, 'posts', null, item.post_id)} />}
-          <button className="account" onClick={requireProfile}>{profile && <Avatar name={profile.name} />}{profile?.name || (userId ? 'Set up profile' : 'Sign in')}</button>
+          <button className="account" onClick={requireProfile}>{profile && <Avatar name={profile.name} userId={userId} path={profile.avatar_path} />}{profile?.name || (userId ? 'Set up profile' : 'Sign in')}</button>
         </header>
 
         <main className="content">
@@ -674,7 +671,7 @@ function App() {
       {modal?.kind && <Modal title={`Report ${modal.kind}`} close={() => setModal(null)}>
         <ReportForm report={modal} onSent={() => { setModal(null); setNotice('Report sent.'); }} />
       </Modal>}
-    </div>
+    </div></AvatarProvider>
   );
 }
 

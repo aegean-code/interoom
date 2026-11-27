@@ -1,6 +1,6 @@
 // Reactions also connect posts to profiles. Select the author foreign key
 // explicitly so PostgREST does not confuse authors with people who reacted.
-const feedFields = 'id,room_id,author_id,body,created_at,profile:profiles!posts_author_id_fkey(name,country,ambassadors(school)),replies(count),reactions(count)';
+const feedFields = 'id,room_id,author_id,body,created_at,profile:profiles!posts_author_id_fkey(name,avatar_path,country,ambassadors(school)),replies(count),reactions(count)';
 
 export async function loadPosts(client, roomId, userId, postId = null) {
   let query = client.from('posts').select(feedFields).order('created_at', { ascending: false }).limit(60);

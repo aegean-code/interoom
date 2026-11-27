@@ -29,6 +29,7 @@ for (const roomId of [null, 'study-lounge']) {
           return Response.json({ code: 'PGRST201', message: 'Ambiguous profiles relationship' }, { status: 300 });
         }
         assert.ok(select.includes('ambassadors(school)'));
+        assert.ok(select.includes('avatar_path'));
         assert.ok(select.includes('replies(count),reactions(count)'));
         assert.equal(url.searchParams.get('room_id'), roomId ? `eq.${roomId}` : null);
         assert.equal(url.searchParams.get('order'), 'created_at.desc');
