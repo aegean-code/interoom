@@ -3,6 +3,11 @@ import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {PGlite} from '@electric-sql/pglite';
 import {MembersPage} from '../../src/members';
+import {AvatarProvider} from '../../src/avatar';
+import {createAvatarApi} from '../../src/avatar-api';
+import {storageFixture} from '../helpers/storage';
+import {localPhotoStorage} from './photo-storage';
+import photos from '../../supabase/migrations/20261127160225_profile_photos.sql?raw';
 import {createMembersApi} from '../../src/members-api';
 import {createMessagingApi} from '../../src/messaging-api';
 import {NotificationBell,useNotifications} from '../../src/notifications';
@@ -28,9 +33,12 @@ if(!(await db.query("select to_regclass('public.profiles') as exists")).rows[0].
 }
 if(!(await db.query("select to_regclass('public.notifications') as exists")).rows[0].exists) await db.exec(notices);
 if(!(await db.query("select to_regclass('public.friendships') as exists")).rows[0].exists) await db.exec(friends);
+if(!(await db.query("select to_regclass('storage.objects') as exists")).rows[0].exists) { await db.exec(storageFixture); await db.exec(photos); await db.exec('create table local_photo_bytes(name text primary key,bytes text)'); }
 let queue=Promise.resolve();const listeners=new Set();
-const tables={social_friend_action:'friendships',social_save_profile:'member_details',dm_start_conversation:'dm_conversations',dm_send_message:'dm_messages',dm_mark_read:'dm_reads',dm_delete_message:'dm_messages',dm_set_block:'dm_conversations',dm_set_preferences:'dm_presence'};
+const tables={profile_set_avatar:'friendships',social_friend_action:'friendships',social_save_profile:'member_details',dm_start_conversation:'dm_conversations',dm_send_message:'dm_messages',dm_mark_read:'dm_reads',dm_delete_message:'dm_messages',dm_set_block:'dm_conversations',dm_set_preferences:'dm_presence'};
+function schedule(job){const run=queue.then(job);queue=run.then(()=>{},()=>{});return run;}
 function client(user){return {
+ storage:localPhotoStorage(db,schedule,user),
  rpc(name,args={}){
   const run=queue.then(async()=>{
    try{
@@ -50,14 +58,15 @@ function client(user){return {
  removeChannel(channel){channel.stop();}
 };}
 const clients=ids.map(id=>client(id));
+const photoApis=clients.map(createAvatarApi);
 const apis=clients.map(createMembersApi), noticeApis=clients.map(createNotificationsApi), messageApis=clients.map(createMessagingApi);
 function Account({index}){
  const [conversation,setConversation]=useState(null);const notifications=useNotifications(ids[index],noticeApis[index]);
- return <section aria-label={`Local account ${index?'B':'A'}`} style={{minWidth:0,padding:20,border:'1px solid #ded8cb'}}>
+ return <AvatarProvider api={photoApis[index]}><section aria-label={`Local account ${index?'B':'A'}`} style={{minWidth:0,padding:20,border:'1px solid #ded8cb'}}>
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><p>Isolated account {index?'B':'A'}</p><NotificationBell notifications={notifications} onOpen={()=>setConversation(null)}/></div>
   {conversation&&<p role="status">Opened private conversation</p>}
   <MembersPage userId={ids[index]} eligible openConversation={setConversation} signIn={()=>{}} api={apis[index]} messageApi={messageApis[index]}/>
- </section>;
+ </section></AvatarProvider>;
 }
 function QA(){const[mode,setMode]=useState(new URLSearchParams(location.search).get('layout') || 'both');return <><p style={{padding:15}}>Isolated local database — no production users.</p><label>Test layout <select value={mode} onChange={e=>setMode(e.target.value)}><option value="both">Both accounts</option><option value="a">Account A</option><option value="b">Account B</option></select></label><div style={{display:'grid',gridTemplateColumns:mode==='both'?'repeat(2,minmax(0,1fr))':'1fr',gap:12}}>{mode!=='b'&&<Account key="a" index={0}/>} {mode!=='a'&&<Account key="b" index={1}/>}</div></>;}
 createRoot(document.getElementById('root')).render(<QA/>);

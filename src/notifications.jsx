@@ -3,6 +3,7 @@ import { Bell, Check, X } from 'lucide-react';
 import { supabase } from './community';
 import { UnreadBadge } from './messaging';
 import { createNotificationsApi, notificationLabel } from './notifications-api';
+import { Avatar } from './avatar';
 import './notifications.css';
 
 export const notificationsApi = createNotificationsApi(supabase);
@@ -84,7 +85,7 @@ export function NotificationBell({ notifications, onOpen }) {
       {!notifications.loading && !notifications.error && !notifications.items.length && <div className="notification-empty"><Bell size={28} /><h3>You’re all caught up.</h3><p>Friend requests, replies, mentions, reactions and private messages will appear here.</p></div>}
       <ul className="notification-list">{notifications.items.map(item => <li key={item.id} className={!item.read_at && !item.unavailable ? 'notification-unread' : ''}>
         <button className="notification-item" disabled={pending || item.unavailable} onClick={() => run(async () => { await notifications.read(item); close(); onOpen(item); })}>
-          <span className="dm-avatar" aria-hidden="true">{(item.name || 'Member').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('')}</span>
+          <Avatar name={item.name} userId={item.actor_id} path={item.avatar_path} className="dm-avatar" />
           <span><strong>{notificationLabel(item)}</strong><time dateTime={item.updated_at}>{date.format(new Date(item.updated_at))}</time>{item.unavailable && <small>This activity is no longer available.</small>}{!item.read_at && !item.unavailable && <span className="sr-only">Unread</span>}</span>
         </button>
         {!item.read_at && !item.unavailable && <button className="icon-button" aria-label={`Mark notification from ${item.name || 'member'} as read`} disabled={pending} onClick={() => run(() => notifications.read(item))}><Check size={17} /></button>}

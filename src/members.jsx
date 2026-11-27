@@ -3,12 +3,13 @@ import { Check, Globe2, MessageCircle, Search, UserPlus, Users, X } from 'lucide
 import { supabase } from './community';
 import { messagingApi } from './messaging';
 import { createMembersApi, memberError } from './members-api';
+import { Avatar, AvatarEditor } from './avatar';
 import './members.css';
 
 export const membersApi = createMembersApi(supabase);
 const tabs = [['discover', 'Discover'], ['friends', 'Friends'], ['requests', 'Requests']];
 
-function ProfileDetails({ initial, save, cancel, editBasic }) {
+function ProfileDetails({ userId, initial, save, cancel, editBasic }) {
   const [values, setValues] = useState(initial), [pending, setPending] = useState(false), [error, setError] = useState('');
   const busy = useRef(false);
   const update = (key, value) => setValues(old => ({ ...old, [key]: value }));
@@ -18,6 +19,7 @@ function ProfileDetails({ initial, save, cancel, editBasic }) {
   }}>
     <div className="member-section-title"><h2>A little about you</h2><button type="button" className="icon-button" aria-label="Close profile details" disabled={pending} onClick={cancel}><X size={19} /></button></div>
     <p>These details are visible to other members. Leave out contact details and anything you want to keep private.</p>
+    <AvatarEditor userId={userId} name="You" path={initial.avatar_path} disabled={pending} />
     <label>Bio<textarea rows={3} maxLength={280} value={values.bio} onChange={e => update('bio', e.target.value)} placeholder="What brought you here?" /></label>
     <label>Interests<input maxLength={160} value={values.interests} onChange={e => update('interests', e.target.value)} placeholder="Robotics, football, films…" /><small>Separate interests with commas.</small></label>
     <label>Languages<input maxLength={120} value={values.languages} onChange={e => update('languages', e.target.value)} placeholder="Turkish, English…" /></label>
@@ -64,7 +66,7 @@ export function MembersPage({ userId, eligible, signIn, openConversation, editBa
   const header = <div className="member-page-heading"><div className="page-intro"><span className="welcome-eyebrow">Different places. Familiar faces.</span><h1>Find your people.</h1><p>Meet fellow students, find shared interests, and keep in touch.</p></div>{eligible && <button className="account" disabled={!visible?.own} onClick={() => setEditing(!editing)}>My profile</button>}</div>;
   if (!userId || !eligible) return <section>{header}<div className="join-state"><Users size={32} /><h2>Make a connection.</h2><p>Sign in with a verified account and complete your profile to meet other members.</p><button className="primary" onClick={signIn}>Sign in or complete profile</button></div></section>;
   return <section className="members-page">{header}
-    {editing && visible?.own && <ProfileDetails initial={visible.own} cancel={() => setEditing(false)} editBasic={editBasic} save={async values => { await api.save(values); setEditing(false); await refresh(); }} />}
+    {editing && visible?.own && <ProfileDetails userId={userId} initial={visible.own} cancel={() => setEditing(false)} editBasic={editBasic} save={async values => { await api.save(values); setEditing(false); await refresh(); }} />}
     <div className="members-toolbar"><div className="view-switch">{tabs.map(([value, label]) => <button key={value} aria-pressed={section === value} onClick={() => changeSection(value)}>{label}{value === 'requests' && visible?.incoming_count > 0 && <span className="unread-badge" aria-label={`${visible.incoming_count} incoming friend requests`}>{visible.incoming_count}</span>}{value === 'friends' && visible?.friends_count > 0 && <span className="member-count">{visible.friends_count}</span>}</button>)}</div>
       <form className="member-search-form" onSubmit={e => { e.preventDefault(); setQuery(draft.trim()); setPage(0); }}><label className="sr-only" htmlFor={`member-search-${userId}`}>Search members</label><input id={`member-search-${userId}`} type="search" value={draft} maxLength={80} onChange={e => setDraft(e.target.value)} placeholder="Name, school, country or interest" /><button className="icon-button" aria-label="Search members"><Search size={19} /></button></form>
     </div>
@@ -74,7 +76,7 @@ export function MembersPage({ userId, eligible, signIn, openConversation, editBa
     {error && <p className="error" role="alert">{error}</p>}
     {visible?.items?.length === 0 && <div className="member-empty"><Users size={30} /><h2>{query ? 'No matches yet.' : section === 'friends' ? 'Every friendship starts with hello.' : section === 'requests' ? 'No pending requests.' : 'More people will arrive soon.'}</h2><p>{query ? 'Try another name, school, country or interest.' : section === 'friends' ? 'Explore the community and send your first friend request.' : section === 'requests' ? 'Requests you send and receive will appear here.' : 'Come back soon to meet other members.'}</p>{section !== 'discover' && <button className="text-button" onClick={() => changeSection('discover')}>Discover members</button>}</div>}
     <div className="member-grid">{visible?.items?.map(person => <article className="member-card" key={person.id}>
-      <header><span className="dm-avatar" aria-hidden="true">{person.name.trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('')}</span><div><h2>{person.name}</h2>{person.username && <small>@{person.username}</small>}</div>{person.relationship === 'friends' && <span className="member-friend-label"><Check size={14} /> Friends</span>}</header>
+      <header><Avatar name={person.name} userId={person.id} path={person.avatar_path} className="dm-avatar" /><div><h2>{person.name}</h2>{person.username && <small>@{person.username}</small>}</div>{person.relationship === 'friends' && <span className="member-friend-label"><Check size={14} /> Friends</span>}</header>
       {(person.school || person.country) && <p className="member-location"><Globe2 size={14} aria-hidden="true" />{[person.school, person.country].filter(Boolean).join(' · ')}</p>}
       {person.bio && <p className="member-bio">{person.bio}</p>}
       {person.interests && <ul className="member-tags" aria-label="Interests">{person.interests.split(',').map(s => s.trim()).filter(Boolean).slice(0, 8).map((s, i) => <li key={i}>{s}</li>)}</ul>}

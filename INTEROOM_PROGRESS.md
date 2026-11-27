@@ -91,12 +91,12 @@ The additive `20261126175754_friends_profiles.sql` migration uses verified-membe
 
 Validation: all 76 automated tests pass, covering existing features plus permissions, lifecycle, privacy, rate limits, blocks, notification deduplication, pagination and message preferences. The production build and whitespace checks pass; the existing bundle-size warning remains. Isolated browser tests use real SQL and the actual React components: request/notification, acceptance/notification, refresh persistence, profile edits, interest search and opening a message conversation all passed. A 390px frame passed with no horizontal overflow. No production test requests or messages were sent. Hosted two-account Realtime verification remains optional, as previously agreed.
 
-Files: `src/members*`, navigation/routing and notification integration, the new migration, `tests/members.test.js`, and the isolated members browser harness. Profile image uploads remain future work. The migration is applied to production as `20261126175754`. Live permission inspection confirms anonymous access and internal helper execution are denied. The security advisor reports only an intentional no-policy notice on the new private rate log; other warnings concern existing objects/settings. PR #9: https://github.com/aegean-code/interoom/pull/9.
+Files: `src/members*`, navigation/routing and notification integration, the new migration, `tests/members.test.js`, and the isolated members browser harness. Profile image uploads are implemented in the next update below. The migration is applied to production as `20261126175754`. Live permission inspection confirms anonymous access and internal helper execution are denied. The security advisor reports only an intentional no-policy notice on the new private rate log; other warnings concern existing objects/settings. PR #9: https://github.com/aegean-code/interoom/pull/9.
 
 ## Next priorities
 
 3. Resend DNS/SMTP completion and real verification/reset email delivery (Google sign-in is live and verified).
-4. Profile image uploads (friends, discovery and profile text are implemented).
+4. Profile photo release verification (implementation and isolated checks complete).
 5. Student verification and moderation.
 6. Navy/blue visual refresh while preserving globe branding.
 7. Aggregated admin analytics.
@@ -104,3 +104,14 @@ Files: `src/members*`, navigation/routing and notification integration, the new 
 9. Map, founding badges, language exchange and events.
 
 Update this file after each tested commit with files, migrations, results and any required user action.
+
+
+## Profile photos — implemented and tested (2026-11-27)
+
+Added Choose/Change/Remove photo in both the account profile dialog and Members → My profile. A circular preview supports zoom and horizontal/vertical framing. JPG, PNG and WebP files up to 8 MB are decoded and re-encoded as 512px JPEGs, stripping source metadata. Initials remain the fallback. Photos appear in post/reply/room-chat author rows, private-message lists and headers, member cards, notifications, ambassadors and the account button.
+
+The additive `20261127160225_profile_photos.sql` migration is applied to the existing project. It creates a private `profile-photos` bucket, owner-scoped immutable uploads, a four-object per-user cap, a 512 KB JPEG storage limit, and guarded profile publishing with a stale-write check. Other users cannot change/delete a photo; unpublished/previous photos are owner-only. Current photos use short-lived signed URLs for verified members, excluding blocked peers. Existing accounts, text profiles and messages are preserved.
+
+All 84 automated tests and the production build pass. Tests cover owner/anonymous/unverified permissions, cross-account writes, stale saves, quota/type/size restrictions, blocked access, propagation through existing RPCs, signed-URL deduplication, failed uploads and cleanup. The browser harness uses real isolated SQL with a local Storage transport: unsupported-file rejection, crop preview, save, display in another member's card, refresh persistence and removal passed. The open editor fits a 390px frame without horizontal overflow. The existing bundle-size warning remains.
+
+Files: `src/avatar*`, `src/photo-image.js`, existing avatar/data-query integrations, the migration, `tests/avatar.test.js`, Storage fixtures and browser harness. Production rollout status is recorded in the accompanying PR.

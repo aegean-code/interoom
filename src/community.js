@@ -10,13 +10,13 @@ export const supabase = url && key ? createBrowserClient(url, key, {
     ...(isInteroomHost(window.location.hostname) ? { domain: '.interoom.org' } : {}),
   },
 }) : null;
-const authors = 'profile:profiles(name,country,ambassadors(school))';
+const authors = 'profile:profiles(name,avatar_path,country,ambassadors(school))';
 async function data(result) {
   if (result.error) throw result.error;
   return result.data;
 }
 export async function getProfile(id) {
-  return data(await supabase.from('profiles').select('name,country,school,username,ambassadors(school)').eq('id', id).maybeSingle());
+  return data(await supabase.from('profiles').select('name,avatar_path,country,school,username,ambassadors(school)').eq('id', id).maybeSingle());
 }
 export async function saveProfile(id, profile, exists) {
   if (exists) await data(await supabase.from('profiles').update(profile).eq('id', id));
@@ -54,7 +54,7 @@ export async function findMembers(search) { return data(await supabase.rpc('find
 export async function getAdminMembers(search = '', page = 0) { return data(await supabase.rpc('list_community_members', { search_text: search, page_number: page })); }
 export async function setAmbassador(userId, school) { return data(await supabase.rpc('set_school_ambassador', { member_id: userId, school_name: school })); }
 export async function getAmbassadors(search = '', page = 0) {
-  let query = supabase.from('ambassadors').select('user_id,school,profile:profiles(name,country)').order('school').order('user_id');
+  let query = supabase.from('ambassadors').select('user_id,school,profile:profiles(name,avatar_path,country)').order('school').order('user_id');
   if (search.trim()) query = query.ilike('school', '%' + search.trim().replace(/[\\%_]/g, '\\$&') + '%');
   return data(await query.range(page * 40, page * 40 + 39));
 }

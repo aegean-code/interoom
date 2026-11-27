@@ -2,6 +2,7 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
+import { storageFixture } from './helpers/storage.js';
 import { createMembersApi, memberError } from '../src/members-api.js';
 import { notificationLabel } from '../src/notifications-api.js';
 
@@ -26,6 +27,7 @@ before(async () => {
   await db.exec(`create role anon;create role authenticated;create schema auth;grant usage on schema auth to anon,authenticated;
     create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,created_at timestamptz default now()-interval '1 day',deleted_at timestamptz,is_anonymous boolean default false);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;create publication supabase_realtime;`);
+  await db.exec(storageFixture);
   const dir = new URL('../supabase/migrations/', import.meta.url);
   for (const file of (await readdir(dir)).filter(x => x.endsWith('.sql')).sort()) await db.exec(await readFile(new URL(file, dir), 'utf8'));
   for (let n = 1; n <= 100; n++) {

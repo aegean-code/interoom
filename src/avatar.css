@@ -1,0 +1,17 @@
+.profile-avatar { position: relative; overflow: hidden; }
+.profile-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.photo-editor { border: 1px solid var(--line); border-radius: 7px; padding: 18px; margin-bottom: 12px; background: #fbf9f3; }
+.photo-editor-heading { display: flex; align-items: center; gap: 8px; color: #36563c; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+.photo-editor-content { display: flex; align-items: center; gap: 20px; }
+.photo-current,.photo-crop { width: 96px; height: 96px; flex-shrink: 0; border-radius: 50%; background: #e4eadc; color: #436047; display: grid; place-items: center; font-size: 28px; }
+.photo-crop { width: 128px; height: 128px; }
+.photo-editor-options { min-width: 0; flex: 1; }
+.photo-editor-options p { font-size: 12px; line-height: 1.6; margin: 0 0 12px; }
+.photo-editor-options small { display: block; font-size: 10px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
+.photo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.photo-actions button { min-height: 36px; font-size: 12px; }
+.photo-sliders { display: grid; gap: 8px; margin-bottom: 14px; }
+.photo-sliders label { display: grid; grid-template-columns: 65px 1fr; align-items: center; gap: 10px; font-size: 11px; }
+.photo-sliders input[type=range] { width: 100%; min-width: 0; padding: 0; accent-color: var(--accent); cursor: pointer; }
+.photo-editor .photo-status { color: #36563c; font-size: 12px; margin: 14px 0 0; }
+@media(max-width:520px) { .photo-editor-content { flex-direction: column; align-items: stretch; } .photo-current,.photo-crop { align-self: center; } .photo-editor-options p { text-align: center; } }
